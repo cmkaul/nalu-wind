@@ -76,6 +76,7 @@
 #include <MomentumBoussinesqSrcNodeSuppAlg.h>
 #include <MomentumBoussinesqRASrcNodeSuppAlg.h>
 #include <MomentumBodyForceSrcNodeSuppAlg.h>
+#include <MomentumABLDampSrcNodeSuppAlg.h>
 #include <MomentumABLForceSrcNodeSuppAlg.h>
 #include <MomentumCoriolisSrcNodeSuppAlg.h>
 #include <MomentumGclSrcNodeSuppAlg.h>
@@ -1419,6 +1420,13 @@ MomentumEquationSystem::register_interior_algorithm(
                             (realm_.ablForcingAlg_->momentumForcingOn())),
                            "ERROR! ABL Forcing parameters must be initialized to use Momentum source.");
             suppAlg = new MomentumABLForceSrcNodeSuppAlg(realm_, realm_.ablForcingAlg_);
+          }
+          else if ( sourceName == "abl_damping" ) {
+            ThrowAssertMsg(
+                           ((NULL != realm_.ablDampingAlg_) &&
+                            (realm_.ablDampingAlg_->momentumForcingOn())),
+                           "ERROR! ABL damping parameters must be initialized to use Momentum source.");
+            suppAlg = new MomentumABLDampSrcNodeSuppAlg(realm_, realm_.ablDampingAlg_);
           }
           else if ( sourceName == "gcl") {
             suppAlg = new MomentumGclSrcNodeSuppAlg(realm_);

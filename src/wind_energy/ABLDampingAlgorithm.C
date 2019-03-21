@@ -34,17 +34,20 @@ ABLDampingAlgorithm::ABLDampingAlgorithm(Realm& realm, const YAML::Node& node)
   : realm_(realm),
     momSrcType_(ABLDampingAlgorithm::OFF),
     tempSrcType_(ABLDampingAlgorithm::OFF),
-    alphaMomentumMax_(1.0),
-    alphaTemperatureMax_(1.0);
-    alphaMomentum_(1.0),
-    alphaTemperature_(1.0),
-    momThickness_(0),
-    tempThickness_(0),
-    UmeanCalc_(0),
-    rhoMeanCalc_(0),
-    USource_(0),
-    TmeanCalc_(0),
-    TSource_(0)
+    gammaMomentum_(0.001),
+    gammaTemperature_(0.001);
+    minDampingHeightMomentum(-999.);
+    minDampingHeightTemperature(-999.);
+    velHeights_(0),
+    tempHeights_(0),
+    velXTimes_(0),
+    velYTimes_(0),
+    velZTimes_(0),
+    tempTimes_(0),
+    velX_(0),
+    velY_(0),
+    velZ_(0),
+    temp_(0),
 {
   if (realm_.bdyLayerStats_ == nullptr)
     throw std::runtime_error("ABL Damping requires ABL Boundary Layer statistics");
@@ -57,79 +60,169 @@ ABLDampingAlgorithm::~ABLDampingAlgorithm()
 void
 ABLDampingAlgorithm::load(const YAML::Node& node)
 {
+  /* CK: Output, staging for removal
   get_if_present(node, "output_frequency", outputFreq_, outputFreq_);
   get_if_present(node, "output_format", outFileFmt_, outFileFmt_);
+  */
 
   if (node["momentum"])
-    momSrcType_ = ABLDampingAlgorithm::ON
     load_momentum_info(node["momentum"]);
 
   if (node["temperature"])
-    tempSrcType = ABLDampingAlgorithm::OFF
     load_temperature_info(node["temperature"]);
 }
 
 void
-ABLForcingAlgorithm::load_momentum_info(const YAML::Node& node)
+ABLDampingAlgorithm::load_momentum_info(const YAML::Node& node)
 {
-  get_if_present(node, "relaxation_factor", alphaMomentumMax_, alphaMomentumMax_);
-  get_required<std::vector<double>>(node, "thickness", momThickness_);
+  std::string mom_type = node["type"].as<std::string>();
+  if (mom_type == "given_profile") {
+    momSrcType_ = ABLDampingAlgorithm::GIVEN_PROFILE;
+  } else if (mom_type == "mean_profile") {
+    momSrcType_ = ABLDampingAlgorithm::MEAN_PROFILE;
+    throw std::runtime_error(
+      "ABLDampingAlgorithm: mean_profile type specification for momentum. "
+      "This type is not ready yet.");
+  } else {
+    throw std::runtime_error(
+      "ABLDampingAlgorithm: Invalid type specification for momentum. ");
+  }
+  get_if_present(node, "relaxation_factor", gammaMomentum_, gammaMomentum_);
+  get_if_present(node, "base_height", minDampingHeightMomentum, 
+                   minDampingHeightMomentum);
   // auto nHeights = velHeights_.size();
+  if (momSrcType_ == GIVEN_PROFILE){
+    get_required<std::vector<double>>(node, "heights", velHeights_);
+    auto nHeights = velHeights_.size();
+    // Load momentum source time histories in temporary data structures, test
+    // consistency of data with heights and then recast them into 2-D lookup
+    // arrays.
+    Array2D<double> vxtmp, vytmp, vztmp;
+    get_required<Array2D<double>>(node, "velocity_x", vxtmp);
+    get_required<Array2D<double>>(node, "velocity_y", vytmp);
+    get_required<Array2D<double>>(node, "velocity_z", vztmp);
+
+    create_interp_arrays(nHeights, vxtmp, velXTimes_, velX_);
+    create_interp_arrays(nHeights, vytmp, velYTimes_, velY_);
+    create_interp_arrays(nHeights, vztmp, velZTimes_, velZ_);
+  } elseif (momSrcType_ == MEAN_PROFILE){
+    //! Do something else?
+  }
 }
 
 void
-ABLForcingAlgorithm::load_temperature_info(const YAML::Node& node)
+ABLDampingAlgorithm::load_temperature_info(const YAML::Node& node)
 {
-  get_if_present(node, "relaxation_factor", alphaTemperatureMax_, alphaTemperatureMax_);
-  get_required<std::vector<double>>(node, "thickness", tempThickness_);
-  //(CK)get_required<std::vector<double>>(node, "heights", tempHeights_);
-  //(CK)auto nHeights = tempHeights_.size();
+  std::string temp_type = node["type"].as<std::string>();
+  if (temp_type == "given_profile") {
+    tempSrcType_ = ABLDampingAlgorithm::GIVEN_PROFILE;
+  } else if (temp_type == "mean_profile") {
+    tempSrcType_ = ABLDampingAlgorithm::MEAN_PROFILE;
+    throw std::runtime_error(
+      "ABLDampingAlgorithm: mean_profile type specification for temperature. "
+      "This type is not ready yet.");
+  } else {
+    throw std::runtime_error(
+      "ABLDampingAlgorithm: Invalid type specification for temperature. ");
+  }
+  get_if_present(node, "relaxation_factor", gammaTemperature_, gammaTemperature_);
+  get_if_present(node, "base_height", minDampingHeightTemperature, minDampingHeightTemperature);
+  if (tempSrcType_ == GIVEN_PROFILE){  
+    get_required<std::vector<double>>(node, "heights", tempHeights_);
+    auto nHeights = tempHeights_.size();
+    // Load temperature source time histories, check data consistency and create
+    // interpolation lookup tables.
+    Array2D<double> temp;
+    get_required<Array2D<double>>(node, "temperature", temp);
+    
+    create_interp_arrays(nHeights, temp, tempTimes_, temp_);
 
+  }else if (tempSrcType_ == MEAN_PROFILE){
+    //! Do something else?
 
+  }
 
-  //(CK)TSource_.resize(nHeights);
-  //(CK)if (tempSrcType_ == COMPUTED)
-  //(CK)  TmeanCalc_.resize(nHeights);
+}
+
+void
+ABLDampingAlgorithm::create_interp_arrays(
+  const std::vector<double>::size_type nHeights,
+  const Array2D<double>& inpArr,
+  std::vector<double>& outTimes,
+  Array2D<double>& outValues)
+{
+  /* The input vector is shaped [nTimes, nHeights+1]. We transform it to two
+   * arrays:
+   *    time[nTimes] = inp[nTimes,0], and
+   *    value[nHeights, nTimes] -> swap rows/cols from input
+   */
+
+  // Check that all timesteps contain values for all the heights
+  for (auto vx : inpArr) {
+    ThrowAssert((vx.size() == (nHeights + 1)));
+  }
+
+  auto nTimes = inpArr.size();
+  outTimes.resize(nTimes);
+  outValues.resize(nHeights);
+  for (std::vector<double>::size_type i = 0; i < nHeights; i++) {
+    outValues[i].resize(nTimes);
+  }
+  for (std::vector<double>::size_type i = 0; i < nTimes; i++) {
+    outTimes[i] = inpArr[i][0];
+    for (std::vector<double>::size_type j = 0; j < nHeights; j++) {
+      outValues[j][i] = inpArr[i][j + 1];
+    }
+  }
 }
 
 void
 ABLDampingAlgorithm::initialize()
 { 
   auto* bdyLayerStats = realm_.bdyLayerStats_;
-  //! CK not sure about this! (right way to get heights_ array from bdyLayerStats?
-  // Is resulting heights_ the values or a reference? 
-  auto heights_ = bdyLayerStats->heights_;
-  const size_t nHeights= heights_.size();
-   
+  //! CK not sure about this! 
+  const std::vector<double>& ablHeights = bdyLayerStats->abl_heights();
+  const int nAblHeights = bdyLayerStats->abl_num_levels();
+  const int ndim = realm_.spatialDimension_;
+  const double zTop = ablHeights[nAblHeights-1];
+  const double zdMom = zTop - minDampingHeightMomentum;
+  const double zdTemp = zTop - minDampingHeightTemperature;
+  const double halfPi = 0.5 * std::acos(-1.0);
+  double sinArg;
+
   if (momSrcType_ != OFF) {
     NaluEnv::self().naluOutputP0()
       << "ABL Damping active for Momentum Equations\n"<< std::endl;
-  }
+    dampingCoeffMomentum.resize(nAblHeights);
+    UDamp.resize(nAblHeights);
 
-  const int ndim = realm_.spatialDimension_;
-  if (momSrcType_ == COMPUTED) {
-    UmeanCalc_.resize(nHeights);
-    rhoMeanCalc_.resize(nHeights);
-    
-    for (size_t i = 0; i < nHeights; i++) {
-      UmeanCalc_[i].resize(ndim);
+    for (size_t i = 0; i < nAblHeights; i++) {
+      UDamp[i].resize(ndim);
+      if (ablHeights[i]< minDampingHeightMomentum){
+        dampingCoeffMomentum[i] = 0.0;
+      }else{
+        sinArg = halfPi * (1.0 - (zTop - ablHeights[i]) / zdMom);
+        dampingCoeffMomentum[i] = gammaMomentum_ * std::pow(std::sin(sinArg),2);
+      }
     }
   }
-  
-  USource_.resize(ndim);
-  for (int i = 0; i < ndim; i++) {
-    USource_[i].resize(nHeights);
-  }
-
-
-
 
   if (tempSrcType_ != OFF) {
     NaluEnv::self().naluOutputP0()
       << "ABL Damping active for Temperature Equation\n"
       << std::endl;
+    dampingCoeffTemperature.resize(nAblHeights);
+    TDamp.resize(nAblHeights);
+    for (size_t i = 0; i < nAblHeights; i++) {
+      if (ablHeights[i]< minDampingHeightMomentum){
+        dampingCoeffTemperature[i] = 0.0;
+      }else{
+        sinArg = halfPi * (1.0 - (zTop - ablHeights[i]) / zdTemp);
+        dampingCoeffTemperature[i] = gammaTemperature_ * std::pow(std::sin(sinArg),2);
+      }
+    }
   }
-
+  /*
   // Prepare output files to dump sources when computed during precursor phase
   if (( NaluEnv::self().parallel_rank() == 0 ) &&
       ( momSrcType_ == COMPUTED )) {
@@ -155,68 +248,98 @@ ABLDampingAlgorithm::initialize()
     uxFile.close();
     uyFile.close();
     uzFile.close();
-  }
+  } */
 }
 
 void
 ABLDampingAlgorithm::execute()
 {
   if (momentumForcingOn())
-    compute_momentum_sources();
+    compute_momentum_target_profile();
 
   if (temperatureForcingOn())
-    compute_temperature_sources();
+    compute_temperature_target_profile();
 }
 
 void
-ABLDampingAlgorithm::compute_momentum_sources()
+ABLDampingAlgorithm::compute_momentum_target_profile()
+
 {
   const double dt = realm_.get_time_step();
-  const int nDim = realm_.spatialDimension_;
-  const size_t nHeights = heights_.size();
-  auto& meta = real.meta_data();
-  auto& bulk = realm.bulk_data();
-  stk::mesh::Selector sel = meta.locally_owned_part()
-    & stk::mesh::selectUnion(fluidParts)
-    & !(realm_.get_inactive_selector());
-  const auto bkts = bulk.get_buckets(stk::topology::NORE_RANK, sel);  
-
-  
-  VectorFieldType* velocity = meta.get_field<VectorFieldType>(
-    stk::topology::NODE_RANK, "velocity")
-  
-
-
-  // CK: At various points, it is assumed that bdyLayerStats have been initialized  
+  const double currTime = realm_.get_current_time();
   auto* bdyLayerStats = realm_.bdyLayerStats_;
-  // Gather the mean profile
-  for (size_t ih=0; ih < nHeights; ih++) {
-    //CK: not 100% sure this if is a good idea
-    if (heights_[ih] > heights_[nHeights-1] - momThickess){
-      bdyLayerStats->velocity(heights_[ih], UmeanCalc_[ih].data());
-      bdyLayerStats->density(heights_[ih], &rhoMeanCalc_[ih]);
+  //! CK not sure about this! 
+  const std::vector<double>& ablHeights = bdyLayerStats->abl_heights();
+  const int nAblHeights = bdyLayerStats->abl_num_levels();
+
+
+  if (momSrcType_ == COMPUTED) {
+    auto* bdyLayerStats = realm_.bdyLayerStats_;
+    for (size_t ih=0; ih < velHeights_.size(); ih++) {
+      bdyLayerStats->velocity(velHeights_[ih], UmeanCalc_[ih].data());
+      bdyLayerStats->density(velHeights_[ih], &rhoMeanCalc_[ih]);
+    }
+    for (size_t ih = 0; ih < velHeights_.size(); ih++) {
+      double xval, yval;
+
+      // Interpolate the velocities from the table to the current time
+      utils::linear_interp(velXTimes_, velX_[ih], currTime, xval);
+      utils::linear_interp(velYTimes_, velY_[ih], currTime, yval);
+
+      // Compute the momentum source
+      // Momentum source in the x direction
+      USource_[0][ih] = rhoMeanCalc_[ih] * (alphaMomentum_ / dt) *
+                          (xval - UmeanCalc_[ih][0]);
+      // Momentum source in the y direction
+      USource_[1][ih] = rhoMeanCalc_[ih] * (alphaMomentum_ / dt) *
+                          (yval - UmeanCalc_[ih][1]);
+
+      // No momentum source in z-direction
+      USource_[2][ih] = 0.0;
+
+    }
+
+  } else {
+    for (size_t ih = 0; ih < velHeights_.size(); ih++) {
+      utils::linear_interp(velXTimes_, velX_[ih], currTime, USource_[0][ih]);
+      utils::linear_interp(velYTimes_, velY_[ih], currTime, USource_[1][ih]);
+      utils::linear_interp(velZTimes_, velZ_[ih], currTime, USource_[2][ih]);
     }
   }
-  // CK Get the local source terms--note that the Usource array might not be useful!
-  // CK Should I just add the  source terms on here???
-  for (auto b: bkts) {
-    for (size_t in=0; in < b->size(); in++){
-      auto node = (*b)[in];
-      int ih = *stk::mesh::field_data(*heightIndex_, node);
-      double* vel = stk::mesh::field_data(*velocity, node);
-      if (heights_[ih] > heights_[nHeights-1] - momThickess){
-        for (int d=0; d < nDim_; d++){
-           momSrc[d] = rhoMeanCalc_[ih] * (alphaMomentum_/dt) *
-                         (vel[d] -UmeanCalc_[ih][d]);
-         }
-      }
-      else{
-      for (int d=0; d < nDim_; d++){
-            momSrc[d] =0.0;
-       }
-     }
+  /*
+  const int tcount = realm_.get_time_step_count();
+  if (( NaluEnv::self().parallel_rank() == 0 ) &&
+      ( momSrcType_ == COMPUTED ) &&
+      ( tcount % outputFreq_ == 0)) {
+    std::string uxname((boost::format(outFileFmt_)%"Ux").str());
+    std::string uyname((boost::format(outFileFmt_)%"Uy").str());
+    std::string uzname((boost::format(outFileFmt_)%"Uz").str());
+    std::fstream uxFile, uyFile, uzFile;
+    uxFile.open(uxname.c_str(), std::fstream::app);
+    uyFile.open(uyname.c_str(), std::fstream::app);
+    uzFile.open(uzname.c_str(), std::fstream::app);
+
+    uxFile << std::setw(12) << currTime << " ";
+    uyFile << std::setw(12) << currTime << " ";
+    uzFile << std::setw(12) << currTime << " ";
+    for (size_t ih = 0; ih < velHeights_.size(); ih++) {
+      uxFile << std::setprecision(6)
+             << std::setw(15)
+             << USource_[0][ih] << " ";
+      uyFile << std::setprecision(6)
+             << std::setw(15)
+             << USource_[1][ih] << " ";
+      uzFile << std::setprecision(6)
+             << std::setw(15)
+             << USource_[2][ih] << " ";
     }
-  }
+    uxFile << std::endl;
+    uyFile << std::endl;
+    uzFile << std::endl;
+    uxFile.close();
+    uyFile.close();
+    uzFile.close();
+  } */
 }
 
 

@@ -22,22 +22,38 @@ class Realm;
  * \brief ABL Damping Source terms for Momentum and Temperature equations
  *
  * This class parses the user inputs and provides a common interface to the
- * momentum and temperature ABL damping source term implementations within Nalu.
+ * momentum and temperature ABL forcing source term implementations within Nalu.
  * The ABL forcing capability is turned on by the presence of a sub-section
  * titled `abl_damping` within the Realm section of the Nalu input file.
  *
  * ```
- *   abl_forcing:
+ *   abl_damping:
  *     momentum:
+ *       type: given_profile
  *       relaxation_factor: 1.0
- *       thickness: 500.0
+ *       heights: [80.0]
+ *       velocity_x:
+ *         - [0.0, 10.0]                 # [Time0, vxH0, ... , vxHN]
+ *         - [100000.0, 10.0]            # [TimeN, vxH0, ... , vxHN]
+ *
+ *       velocity_y:
+ *         - [0.0, 0.0]
+ *         - [10000.0, 0.0]
+ *
+ *       velocity_z:
+ *         - [0.0, 0.0]
+ *         - [10000.0, 0.0]
  *
  *     temperature:
+ *       type: given_profile
  *       relaxation_factor: 1.0
- *       thickness: 500.0
+ *       heights: [80.0]
+ *       temperature:
+ *         - [0.0, 300.0]
+ *         - [10000.0, 300.0]
  * ```
  *
- * There are two optional sub-sections in `abl_damping`: "momentum" and
+ * There are two optional sub-sections in `abl_forcing`: "momentum" and
  * "temperature".
  */
 class ABLDampingAlgorithm
@@ -47,13 +63,32 @@ public:
   using Array2D = std::vector<std::vector<T>>;
 
   /**
-   * Types of ABL damping available
+   * Types of ABL forcing available
    */
   enum ABLDampingTypes {
-    OFF = 0,        //!< No ABL Damping applied
-    ON = 1,         //!< Use Damping
+    OFF = 0,              //!< No ABL damping applied
+    GIVEN_PROFILE = 1,     //!< Target profile provided by user
+    MEAN_PROFILE = 2,      //!< Target profile is the current mean profile (WIP)
     NUM_ABL_DAMPING_TYPES //!< Guard
   };
+
+  //! Smoothly increasing damping coefficient profile for Momentum
+  std::vector<double> dampingCoeffMomentum;
+
+  //! Smoothly increasing damping coefficient profile for Temperature
+  std::vector<double> dampingCoeffTemperature;
+ 
+  //! Base of the damping layer for momentum
+  double minDampingHeightMomentum;
+
+  //! Base of the damping layer for temperature
+  double minDampingHeightTemperature;
+
+  //! Target velocity profile on the ABL vertical grid [nHeights, 3]
+  Array2D<double> UDamp;
+
+  //! Target temperature profile on the ABL vertical grid [nHeights]
+  std::vector<double> TDamp;
 
   ABLDampingAlgorithm(Realm&, const YAML::Node&);
 
@@ -67,22 +102,22 @@ public:
 
   //! Execute field transfers, compute planar averaging, and determine source
   //! terms at desired levels.
+  //! CK: TODO: Keep this methods but need to update descriptive comment
   void execute();
 
-  //! Evaluate the ABL damping source contribution at a node
-  //! CK: I think this will need to be modified
-  //! CK: I think vector here is the 3 components, we will need 3*nz
+  /* CK: Tentatively removing
+  //! Evaluate the ABL forcing source contribution at a node
   void eval_momentum_source(
     const double,        //!< Height of the node from terrain
     std::vector<double>& //!< Source vector to be populated
     );
 
   //! Evaluate the ABL forcing source contribution (temperature)
-  //! CK: Will need to modify this (ie double to a vector)
   void eval_temperature_source(
     const double, //!< Height of the node from terrain
     double&       //!< Temperature source term to be populated
     );
+   */
 
   inline bool momentumDampingOn() { return (momSrcType_ != OFF); }
 
@@ -104,7 +139,6 @@ private:
   void load_temperature_info(const YAML::Node&);
 
   //! Create 2-D interpolation lookup tables from YAML data structures
-  //! CK: I don't think I will need this
   void create_interp_arrays(
     const std::vector<double>::size_type,
     const Array2D<double>&,
@@ -112,12 +146,10 @@ private:
     Array2D<double>&);
 
   //! Compute mean velocity and estimate source term for a given timestep
-  //! CK: this should be something I need
-  void compute_momentum_sources();
+  void compute_momentum_target_profile();
 
   //! Compute average planar temperature and estimate source term
-  //! CK: this should be something I need
-  void compute_temperature_sources();
+  void compute_temperature_profile();
 
   //! Reference to Realm
   Realm& realm_;
@@ -128,50 +160,52 @@ private:
   //! Temperature Forcing Source Type
   ABLDampingTypes tempSrcType_;
 
-  //! Relaxation factor for momentum sources
-  //! CK: make this a vector (was double) to allow height-dependence
-  double alphaMomentumMax_;
-  std::vector<double> alphaMomentum_;
+  //! Maximum relaxation factor for momentum sources
+  double gammaMomentum_;
 
-  //! Relaxation factor for temperature sources
-  //! CK: make this a vector (was a double) to allow height-dependence
-  double alphaTemperatureMax_;
-  std::vector<double> alphaTemperature_;
 
-  //! Thickness of the momentum damping layer 
-  double momThickness_; // 
+  //! Maximum relaxation factor for temperature sources
+  double gammaTemperature_;
 
-  //! Thickness of the temperature damping layer
-  double tempThickness_; // Array of shape [num_Theights]
+  //! Heights where velocity information is provided
+  std::vector<double> velHeights_; // Array of shape [num_Uheights]
 
-  //! Planar average velocity calculated on the surface [num_UHeights, 3]
-  //! CK: This will need to be changed to all z levels within momThickness
-  // or simply at all z levels
-  //! Or in other words num_UHeights=nz
-  //! CK: should enforce UmeanCalc[:,2]=0 ?
-  Array2D<double> UmeanCalc_;
+  //! Heights where temperature information is provided
+  std::vector<double> tempHeights_; // Array of shape [num_Theights]
 
+  //! Times where velocity information is available
+  std::vector<double> velXTimes_; // Arrays of shape [num_Utimes]
+  std::vector<double> velYTimes_;
+  std::vector<double> velZTimes_;
+
+  //! Times where temperature information is available
+  std::vector<double> tempTimes_; // Array of shape [num_Ttimes]
+
+  // The following arrays are shaped [num_UHeights, num_Utimes]
+  Array2D<double> velX_;
+  Array2D<double> velY_;
+  Array2D<double> velZ_;
+  // The temperature array is shaped [num_Theights, num_Ttimes]
+  Array2D<double> temp_;
+
+  
+  /* CK: staging for removal
   //! Planar average density calculated on the surface [num_UHeights]
-  //! CK: this seems unnecessary for Boussinesq sys, but may be forward looking
   std::vector<double> rhoMeanCalc_;
-
-  //! U source as a function of height [3,num_UHeights]
-  Array2D<double> USource_;
-
-  //! Planar average temperature calculated on the surface [num_THeights]
-  std::vector<double> TmeanCalc_;
 
   //! T source as a function of height [num_THeights]
   std::vector<double> TSource_;
+  */
 
+  /* CK: TODO: Not sure on whether to keep the output or not
   //! Write frequency for source term output
-  //! CK: I am not sure this is needed. I believe this is related to .dat files
   int outputFreq_{10};
 
   //! Format string specifier indicating the file name for output. The
   //! specification takes one `%s` specifier that is used to populate Ux, Uy,
   //! Uz, T. Default is "abl_sources_%s.dat"
-  std::string outFileFmt_{"abl_%s_damping.dat"};
+  std::string outFileFmt_{"abl_%s_sources.dat"};
+  */
 };
 }
 }

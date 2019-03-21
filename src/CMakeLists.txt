@@ -119,6 +119,7 @@ add_sources(GlobalSourceList
    MaterialProperty.C
    MaterialPropertys.C
    MixtureFractionEquationSystem.C
+   MomentumABLDampSrcNodeSuppAlg.C
    MomentumABLForceSrcNodeSuppAlg.C
    MomentumActuatorSrcNodeSuppAlg.C
    MomentumBodyForceSrcNodeSuppAlg.C

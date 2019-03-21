@@ -1,5 +1,6 @@
 add_sources(GlobalHeaderList
    ABLForcingAlgorithm.h
+   ABLDampingAlgorithm.h
    ABLProfileFunction.h
    Actuator.h
    ActuatorLinePointDrag.h
@@ -136,6 +137,7 @@ add_sources(GlobalHeaderList
    MaterialPropertys.h
    MixtureFractionEquationSystem.h
    MomentumABLForceSrcNodeSuppAlg.h
+   MomentumABLDampSrcNodeSuppAlg.h
    MomentumActuatorSrcNodeSuppAlg.h
    MomentumBodyForceSrcNodeSuppAlg.h
    MomentumBoussinesqRASrcNodeSuppAlg.h
