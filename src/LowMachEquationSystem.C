@@ -7,6 +7,7 @@
 
 
 #include <LowMachEquationSystem.h>
+#include <wind_energy/ABLDampingAlgorithm.h>
 #include <wind_energy/ABLForcingAlgorithm.h>
 #include <AlgorithmDriver.h>
 #include <AssembleCourantReynoldsElemAlgorithm.h>
@@ -104,6 +105,8 @@
 #include <TurbViscSmagorinskyAlgorithm.h>
 #include <TurbViscSSTAlgorithm.h>
 #include <TurbViscWaleAlgorithm.h>
+//! Repeated from above
+#include <wind_energy/ABLDampingAlgorithm.h>
 #include <wind_energy/ABLForcingAlgorithm.h>
 #include <FixPressureAtNodeAlgorithm.h>
 #include <FixPressureAtNodeInfo.h>
@@ -1424,7 +1427,7 @@ MomentumEquationSystem::register_interior_algorithm(
           else if ( sourceName == "abl_damping" ) {
             ThrowAssertMsg(
                            ((NULL != realm_.ablDampingAlg_) &&
-                            (realm_.ablDampingAlg_->momentumForcingOn())),
+                            (realm_.ablDampingAlg_->momentumDampingOn())),
                            "ERROR! ABL damping parameters must be initialized to use Momentum source.");
             suppAlg = new MomentumABLDampSrcNodeSuppAlg(realm_, realm_.ablDampingAlg_);
           }

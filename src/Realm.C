@@ -79,6 +79,7 @@
 #include <ActuatorDiskFAST.h>
 #endif
 
+#include <wind_energy/ABLDampingAlgorithm.h>
 #include <wind_energy/ABLForcingAlgorithm.h>
 #include <wind_energy/SyntheticLidar.h>
 
@@ -648,6 +649,11 @@ Realm::look_ahead_and_creation(const YAML::Node & node)
   if (node["abl_forcing"]) {
       const YAML::Node ablNode = node["abl_forcing"];
       ablForcingAlg_ = new ABLForcingAlgorithm(*this, ablNode);
+  }
+  // ABL Damping parameters
+  if (node["abl_damping"]) {
+      const YAML::Node ablNode = node["abl_damping"];
+      ablDampingAlg_ = new ABLDampingAlgorithm(*this, ablNode);
   }
 }
   

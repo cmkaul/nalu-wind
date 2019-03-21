@@ -13,9 +13,9 @@ namespace sierra {
 namespace nalu {
 
 MomentumABLDampSrcNodeSuppAlg::MomentumABLDampSrcNodeSuppAlg(
-  Realm& realm, ABLDampingAlgorithm* ablDamp_)
+  Realm& realm, ABLDampingAlgorithm* abldamp)
   : SupplementalAlgorithm(realm),
-    ablSrc_(ablsrc),
+    ablDamp_(abldamp),
     nDim_(realm_.meta_data().spatial_dimension())
 {
   // Save some fields

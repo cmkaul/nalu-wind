@@ -254,10 +254,10 @@ ABLDampingAlgorithm::initialize()
 void
 ABLDampingAlgorithm::execute()
 {
-  if (momentumForcingOn())
+  if (momentumDampingOn())
     compute_momentum_target_profile();
 
-  if (temperatureForcingOn())
+  if (temperatureDampingOn())
     compute_temperature_target_profile();
 }
 
@@ -271,41 +271,36 @@ ABLDampingAlgorithm::compute_momentum_target_profile()
   //! CK not sure about this! 
   const std::vector<double>& ablHeights = bdyLayerStats->abl_heights();
   const int nAblHeights = bdyLayerStats->abl_num_levels();
+  std::vector<double> timeInterpVelX, timeInterpVelY, timeInterpVelZ
 
+  timeInterpVelX.resize(nAblHeights);
+  timeInterpVelY.resize(nAblHeights);
+  timeInterpVelZ.resize(nAblHeights);
+  
 
-  if (momSrcType_ == COMPUTED) {
-    auto* bdyLayerStats = realm_.bdyLayerStats_;
+  if (momSrcType_ == MEAN_PROFILE) {
     for (size_t ih=0; ih < velHeights_.size(); ih++) {
-      bdyLayerStats->velocity(velHeights_[ih], UmeanCalc_[ih].data());
-      bdyLayerStats->density(velHeights_[ih], &rhoMeanCalc_[ih]);
+      bdyLayerStats->velocity(ablHeights[ih], UDamp[ih].data());
     }
-    for (size_t ih = 0; ih < velHeights_.size(); ih++) {
-      double xval, yval;
+  }else if( momSrcType_ == GIVEN_PROFILE){
+      //! First interp in time
+      for (size_t ih = 0; ih < velHeights_.size(); ih++) {
+        // Interpolate the velocities from the table to the current time
+        utils::linear_interp(velXTimes_, velX_[ih], currTime, timeInterpVelX[ih]);
+        utils::linear_interp(velYTimes_, velY_[ih], currTime, timeInterpVelY[ih]);
+        utils::linear_interp(velZTimes_, velZ_[ih], currTime, timeInterpVelZ[ih]);
+      }
+      //! Second interp in height
+      for (size_t ih=0; ih<nAblHeights; ih++) {
+        utils::linear_interp(velHeights_, timeInterpVelX, ablHeights[ih], UDamp[ih][0]);
+        utils::linear_interp(velHeights_, timeInterpVelY, ablHeights[ih], UDamp[ih][1]);
+        utils::linear_interp(velHeights_, timeInterpVelZ, ablHeights[ih], UDamp[ih][2]);
+      }
 
-      // Interpolate the velocities from the table to the current time
-      utils::linear_interp(velXTimes_, velX_[ih], currTime, xval);
-      utils::linear_interp(velYTimes_, velY_[ih], currTime, yval);
-
-      // Compute the momentum source
-      // Momentum source in the x direction
-      USource_[0][ih] = rhoMeanCalc_[ih] * (alphaMomentum_ / dt) *
-                          (xval - UmeanCalc_[ih][0]);
-      // Momentum source in the y direction
-      USource_[1][ih] = rhoMeanCalc_[ih] * (alphaMomentum_ / dt) *
-                          (yval - UmeanCalc_[ih][1]);
-
-      // No momentum source in z-direction
-      USource_[2][ih] = 0.0;
-
-    }
-
-  } else {
-    for (size_t ih = 0; ih < velHeights_.size(); ih++) {
-      utils::linear_interp(velXTimes_, velX_[ih], currTime, USource_[0][ih]);
-      utils::linear_interp(velYTimes_, velY_[ih], currTime, USource_[1][ih]);
-      utils::linear_interp(velZTimes_, velZ_[ih], currTime, USource_[2][ih]);
-    }
   }
+
+ 
+
   /*
   const int tcount = realm_.get_time_step_count();
   if (( NaluEnv::self().parallel_rank() == 0 ) &&
@@ -344,27 +339,38 @@ ABLDampingAlgorithm::compute_momentum_target_profile()
 
 
 void
-ABLForcingAlgorithm::compute_temperature_sources()
+ABLDampingAlgorithm::compute_temperature_target_profile)
 {
   const double dt = realm_.get_time_step();
   const double currTime = realm_.get_current_time();
+  auto* bdyLayerStats = realm_.bdyLayerStats_;
+  //! CK not sure about this! 
+  const std::vector<double>& ablHeights = bdyLayerStats->abl_heights();
+  const int nAblHeights = bdyLayerStats->abl_num_levels();
+  std::vector<double> timeInterpTemp
 
-  if (tempSrcType_ == COMPUTED) {
-    auto* bdyLayerStats = realm_.bdyLayerStats_;
+  timeInterpTemp.resize(nAblHeights);
+
+  if (tempSrcType_ == MEAN_PROFILE) {
     for (size_t ih=0; ih < tempHeights_.size(); ih++) {
-      bdyLayerStats->temperature(tempHeights_[ih], &TmeanCalc_[ih]);
+      bdyLayerStats->temperature(tempHeights_[ih], &TDamp[ih]);
     }
+  }else if (tempSrcType_ == GIVEN_PROFILE){
+    //! First interp in time
     for (size_t ih = 0; ih < tempHeights_.size(); ih++) {
-      double tval;
-      utils::linear_interp(tempTimes_, temp_[ih], currTime, tval);
-      TSource_[ih] = (alphaTemperature_ / dt) * (tval - TmeanCalc_[ih]);
+      utils::linear_interp(tempTimes_, temp_[ih], currTime, timeInterpTemp[ih]);
     }
-  } else {
-    for (size_t ih = 0; ih < tempHeights_.size(); ih++) {
-      utils::linear_interp(tempTimes_, temp_[ih], currTime, TSource_[ih]);
+    //! Second interp in height
+    for (size_t ih =0; ih < nAblHeights; ih++){
+      utils::linear_interp(tempHeights_, timeInterpTemp, ablHeights[ih], TDamp[ih]);
+
     }
   }
 
+
+
+
+/*
   const int tcount = realm_.get_time_step_count();
   if (( NaluEnv::self().parallel_rank() == 0 ) &&
       ( tempSrcType_ == COMPUTED ) &&
@@ -382,36 +388,9 @@ ABLForcingAlgorithm::compute_temperature_sources()
     tFile << std::endl;
     tFile.close();
   }
+  */
 }
 
-void
-ABLForcingAlgorithm::eval_momentum_source(
-  const int ih, std, std::vector<double>& momSrc)
-{
-  const int nDim = realm_.spatialDimension_;
-  if (velHeights_.size() == 1) {
-    // Constant source term throughout the domain
-    for (int i = 0; i < nDim; i++) {
-      momSrc[i] = USource_[i][0];
-    }
-  } else {
-    // Linearly interpolate source term within the planes, maintain constant
-    // source term above and below the heights provided
-    for (int i = 0; i < nDim; i++) {
-      utils::linear_interp(velHeights_, USource_[i], zp, momSrc[i]);
-    }
-  }
-}
-
-void
-ABLForcingAlgorithm::eval_temperature_source(const double zp, double& tempSrc)
-{
-  if (tempHeights_.size() == 1) {
-    tempSrc = TSource_[0];
-  } else {
-    utils::linear_interp(tempHeights_, TSource_, zp, tempSrc);
-  }
-}
 
 } // namespace nalu
 } // namespace sierra
