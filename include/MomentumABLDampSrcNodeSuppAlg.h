@@ -42,7 +42,7 @@ private:
   ScalarFieldType* densityNP1_;
   
   //! Pointer to the velocity at state np1
-  VectorFieldType *velocityNP1_;
+  VectorFieldType* velocityNP1_;
 
   //! Pointer to the dual volume of the mesh
   ScalarFieldType* dualNodalVolume_;

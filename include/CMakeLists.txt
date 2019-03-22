@@ -101,6 +101,7 @@ add_sources(GlobalHeaderList
    EigenDecomposition.h
    ElemDataRequests.h
    ElemDataRequestsNGP.h
+   EnthalpyABLDampSrcNodeSuppAlg.h
    EnthalpyABLSrcNodeSuppAlg.h
    EnthalpyEffectiveDiffFluxCoeffAlgorithm.h
    EnthalpyEquationSystem.h

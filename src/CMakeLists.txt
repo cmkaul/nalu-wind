@@ -91,6 +91,7 @@ add_sources(GlobalSourceList
    EffectiveDiffFluxCoeffAlgorithm.C
    EffectiveSSTDiffFluxCoeffAlgorithm.C
    ElemDataRequests.C
+   EnthalpyABLDampSrcNodeSuppAlg.C
    EnthalpyABLSrcNodeSuppAlg.C
    EnthalpyEffectiveDiffFluxCoeffAlgorithm.C
    EnthalpyEquationSystem.C

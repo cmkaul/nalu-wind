@@ -16,13 +16,13 @@ MomentumABLDampSrcNodeSuppAlg::MomentumABLDampSrcNodeSuppAlg(
   Realm& realm, ABLDampingAlgorithm* abldamp)
   : SupplementalAlgorithm(realm),
     ablDamp_(abldamp),
-    nDim_(realm_.meta_data().spatial_dimension())
+    nDim_(realm.meta_data().spatial_dimension())
 {
   // Save some fields
   // get the realm meta data
-  stk::mesh::MetaData & meta = realm_.meta_data();
+  stk::mesh::MetaData& meta = realm.meta_data();
   // Get the coordinates 
-  VectorFieldType* coords_ = meta.get_field<VectorFieldType>(
+  coords_ = meta.get_field<VectorFieldType>(
     stk::topology::NODE_RANK, "coordinates");
   // Cet the density
   ScalarFieldType* density_ = meta.get_field<ScalarFieldType>(
@@ -54,11 +54,9 @@ MomentumABLDampSrcNodeSuppAlg::node_execute(
   //Access nodal values
   const double* pt = stk::mesh::field_data(*coords_, node);
   const double dualVol = *stk::mesh::field_data(*dualNodalVolume_, node);
-  const double* pt = stk::mesh::field_data(*coords_, node);
   const double rhoNP1 = *stk::mesh::field_data(*densityNP1_, node);
   const double* vel = *stk::mesh::field_data(*velocityNP1_, node);
   const int ih = stk::mesh::field_data(*heightIndex_, node);
-  std::vector<double> momSrc(nDim_);
   
   //CK: tentative here
   //Getting some values needed from the damping algorithm

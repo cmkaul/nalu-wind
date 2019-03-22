@@ -7,6 +7,7 @@
 
 
 #include <EnthalpyEquationSystem.h>
+#include <wind_energy/ABLDampingAlgorithm.h>
 #include <wind_energy/ABLForcingAlgorithm.h>
 #include <AlgorithmDriver.h>
 #include <AssembleScalarFluxBCSolverAlgorithm.h>
@@ -587,6 +588,13 @@ EnthalpyEquationSystem::register_interior_algorithm(
              (realm_.ablForcingAlg_->temperatureForcingOn())),
             "EnthalpyNodalSrcTerms::ERROR! ABL Forcing parameters must be initialized to use temperature source.");
           suppAlg = new EnthalpyABLSrcNodeSuppAlg(realm_, realm_.ablForcingAlg_);
+        }
+        else if (sourceName == "abl_damping") {
+          ThrowAssertMsg(
+            ((NULL != realm_.ablDampingAlg_) &&
+             (realm_.ablDampingAlg_->temperatureDampingOn())),
+            "EnthalpyNodalSrcTerms::ERROR! ABL Damping parameters must be initialized to use temperature source.");
+          suppAlg = new EnthalpyABLDampSrcNodeSuppAlg(realm_, realm_.ablDampingAlg_);
         }
         else {
           throw std::runtime_error("EnthalpyNodalSrcTerms::Error Source term is not supported: " + sourceName);
