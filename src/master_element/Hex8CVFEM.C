@@ -36,14 +36,6 @@ HexSCV::HexSCV()
 }
 
 //--------------------------------------------------------------------------
-//-------- destructor ------------------------------------------------------
-//--------------------------------------------------------------------------
-HexSCV::~HexSCV()
-{
-  // does nothing
-}
-
-//--------------------------------------------------------------------------
 //-------- ipNodeMap -------------------------------------------------------
 //--------------------------------------------------------------------------
 const int *
@@ -205,7 +197,6 @@ HexSCS::HexSCS() : MasterElement() {
   MasterElement::nodesPerElement_       = nodesPerElement_;
   MasterElement::numIntPoints_          = numIntPoints_;
   MasterElement::scaleToStandardIsoFac_ = scaleToStandardIsoFac_;
-  MasterElement::lrscv_           .assign(lrscv_,       24+lrscv_);
   MasterElement::ipNodeMap_       .assign(ipNodeMap_,   24+ipNodeMap_);
   MasterElement::oppNode_         .assign(oppNode_,     24+oppNode_);
   MasterElement::nodeLoc_         .assign(&nodeLoc_[0][0],  24+&nodeLoc_[0][0]);
@@ -219,14 +210,6 @@ HexSCS::HexSCS() : MasterElement() {
   MasterElement::nodesPerElement_       = nodesPerElement_;
   MasterElement::numIntPoints_          = numIntPoints_;
   MasterElement::scaleToStandardIsoFac_ = scaleToStandardIsoFac_;
-}
-
-//--------------------------------------------------------------------------
-//-------- destructor ------------------------------------------------------
-//--------------------------------------------------------------------------
-HexSCS::~HexSCS()
-{
-  // does nothing
 }
 
 //--------------------------------------------------------------------------
@@ -572,7 +555,7 @@ const int *
 HexSCS::adjacentNodes()
 {
   // define L/R mappings
-  return &lrscv_[0];
+  return lrscv_;
 }
 
 //--------------------------------------------------------------------------

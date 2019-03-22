@@ -19,8 +19,10 @@ namespace nalu {
 class WedSCV : public MasterElement
 {
 public:
+  KOKKOS_FUNCTION
   WedSCV();
-  virtual ~WedSCV();
+  KOKKOS_FUNCTION
+  virtual ~WedSCV() = default;
 
   using AlgTraits = AlgTraitsWed6;
   using MasterElement::determinant;
@@ -104,13 +106,16 @@ private:
 class WedSCS : public MasterElement
 {
 public:
+  KOKKOS_FUNCTION
   WedSCS();
-  virtual ~WedSCS();
+  KOKKOS_FUNCTION
+  virtual ~WedSCS() = default;
 
   using AlgTraits = AlgTraitsWed6;
   using MasterElement::determinant;
   using MasterElement::shape_fcn;
   using MasterElement::shifted_shape_fcn;
+  using MasterElement::adjacentNodes;
 
   const int * ipNodeMap(int ordinal = 0);
 
@@ -203,7 +208,7 @@ public:
     double *metric,
     double *deriv);
 
-  const int * adjacentNodes();
+  virtual const int * adjacentNodes() final;
   
   const int * scsIpEdgeOrd();
 

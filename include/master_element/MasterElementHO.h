@@ -42,11 +42,13 @@ public:
   using MasterElement::grad_op;
   using MasterElement::shape_fcn;
 
+  KOKKOS_FUNCTION
   HigherOrderHexSCV(
     ElementDescription elem,
     LagrangeBasis basis,
     TensorProductQuadratureRule quadrature);
 
+  KOKKOS_FUNCTION
   virtual ~HigherOrderHexSCV() {}
 
   void shape_fcn(double *shpfc) final;
@@ -104,11 +106,14 @@ public:
   using MasterElement::shape_fcn;
   using MasterElement::gij;
   using MasterElement::face_grad_op;
+  using MasterElement::adjacentNodes;
 
+  KOKKOS_FUNCTION
   HigherOrderHexSCS(
     ElementDescription elem,
     LagrangeBasis basis,
     TensorProductQuadratureRule quadrature);
+  KOKKOS_FUNCTION
   virtual ~HigherOrderHexSCS() {}
 
   void shape_fcn(double *shpfc) final;
@@ -178,6 +183,8 @@ public:
     SharedMemView<DoubleType***>& gradop) final;
 
 private:
+  std::vector<int> lrscv_;
+
   void set_interior_info();
   void set_boundary_info();
 
@@ -208,11 +215,13 @@ public:
   using MasterElement::determinant;
   using MasterElement::shape_fcn;
 
+  KOKKOS_FUNCTION
   HigherOrderQuad3DSCS(
     ElementDescription elem,
     LagrangeBasis basis,
     TensorProductQuadratureRule quadrature);
 
+  KOKKOS_FUNCTION
   virtual ~HigherOrderQuad3DSCS() {}
 
   void shape_fcn(double *shpfc) final;
@@ -264,10 +273,12 @@ public:
   using MasterElement::shape_fcn;
   using MasterElement::grad_op;
 
+  KOKKOS_FUNCTION
   HigherOrderQuad2DSCV(
     ElementDescription elem,
     LagrangeBasis basis,
     TensorProductQuadratureRule quadrature);
+  KOKKOS_FUNCTION
   virtual ~HigherOrderQuad2DSCV() {}
 
   void shape_fcn(double *shpfc) final;
@@ -323,11 +334,14 @@ public:
   using MasterElement::grad_op;
   using MasterElement::face_grad_op;
   using MasterElement::gij;
+  using MasterElement::adjacentNodes;
 
+  KOKKOS_FUNCTION
   HigherOrderQuad2DSCS(
     ElementDescription elem,
     LagrangeBasis basis,
     TensorProductQuadratureRule quadrature);
+  KOKKOS_FUNCTION
   virtual ~HigherOrderQuad2DSCS() {}
 
   void shape_fcn(double *shpfc) final;
@@ -394,6 +408,8 @@ public:
   }
 
 private:
+  std::vector<int> lrscv_;
+
   void set_interior_info();
   void set_boundary_info();
 
@@ -421,11 +437,13 @@ public:
   using MasterElement::determinant;
   using MasterElement::shape_fcn;
 
+  KOKKOS_FUNCTION
   explicit HigherOrderEdge2DSCS(
     ElementDescription elem,
     LagrangeBasis basis,
     TensorProductQuadratureRule quadrature);
-  virtual ~HigherOrderEdge2DSCS() {}
+  KOKKOS_FUNCTION
+  virtual ~HigherOrderEdge2DSCS() = default;
 
   const int * ipNodeMap(int ordinal = 0) final;
 

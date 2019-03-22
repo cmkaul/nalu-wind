@@ -57,6 +57,7 @@ void tet_deriv(DerivType& deriv)
 //--------------------------------------------------------------------------
 //-------- constructor -----------------------------------------------------
 //--------------------------------------------------------------------------
+KOKKOS_FUNCTION
 TetSCV::TetSCV()
   : MasterElement()
 {
@@ -67,14 +68,6 @@ TetSCV::TetSCV()
   MasterElement::ipNodeMap_.assign(ipNodeMap_, 4+ipNodeMap_);
   MasterElement::intgLoc_.assign(&intgLoc_[0][0],           12+&intgLoc_[0][0]);
   MasterElement::intgLocShift_.assign(&intgLocShift_[0][0], 12+&intgLocShift_[0][0]);
-}
-
-//--------------------------------------------------------------------------
-//-------- destructor ------------------------------------------------------
-//--------------------------------------------------------------------------
-TetSCV::~TetSCV()
-{
-  // does nothing
 }
 
 //--------------------------------------------------------------------------
@@ -292,6 +285,7 @@ void TetSCV::Mij(
 //--------------------------------------------------------------------------
 //-------- constructor -----------------------------------------------------
 //--------------------------------------------------------------------------
+KOKKOS_FUNCTION
 TetSCS::TetSCS()
   : MasterElement()
 {
@@ -299,8 +293,6 @@ TetSCS::TetSCS()
   MasterElement::nodesPerElement_ = nodesPerElement_;
   MasterElement::numIntPoints_ = numIntPoints_;
 
-  // define L/R mappings
-  MasterElement::lrscv_.assign(lrscv_,  12+lrscv_);
   MasterElement::scsIpEdgeOrd_.assign(scsIpEdgeOrd_,  numIntPoints_+scsIpEdgeOrd_);
   MasterElement::oppNode_.assign(&oppNode_[0][0], 12+&oppNode_[0][0]);
   MasterElement::oppFace_.assign(&oppFace_[0][0], 12+&oppFace_[0][0]);
@@ -325,14 +317,6 @@ TetSCS::TetSCS()
     }
   }
   MasterElement::intgExpFaceShift_.assign(&intgExpFaceShift_[0][0][0], 36+&intgExpFaceShift_[0][0][0]);
-}
-
-//--------------------------------------------------------------------------
-//-------- destructor ------------------------------------------------------
-//--------------------------------------------------------------------------
-TetSCS::~TetSCS()
-{
-  // does nothing
 }
 
 //--------------------------------------------------------------------------
@@ -707,7 +691,7 @@ const int *
 TetSCS::adjacentNodes()
 {
   // define L/R mappings
-  return &lrscv_[0];
+  return lrscv_;
 }
 
 //--------------------------------------------------------------------------

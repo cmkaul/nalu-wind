@@ -25,8 +25,10 @@ public:
   using MasterElement::shape_fcn;
   using MasterElement::shifted_shape_fcn;
 
+  KOKKOS_FUNCTION
   TetSCV();
-  virtual ~TetSCV();
+  KOKKOS_FUNCTION
+  virtual ~TetSCV() = default;
 
   const int * ipNodeMap(int ordinal = 0);
 
@@ -104,9 +106,12 @@ public:
   using MasterElement::determinant;
   using MasterElement::shape_fcn;
   using MasterElement::shifted_shape_fcn;
+  using MasterElement::adjacentNodes;
 
+  KOKKOS_FUNCTION
   TetSCS();
-  virtual ~TetSCS();
+  KOKKOS_FUNCTION
+  virtual ~TetSCS() = default;
 
   const int * ipNodeMap(int ordinal = 0);
 
@@ -194,7 +199,7 @@ public:
     double *metric,
     double *deriv);
 
-  const int * adjacentNodes();
+  virtual const int * adjacentNodes() final;
 
   const int * scsIpEdgeOrd();
 

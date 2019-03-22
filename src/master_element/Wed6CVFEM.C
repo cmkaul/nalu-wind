@@ -60,6 +60,7 @@ void wed_deriv(
 //--------------------------------------------------------------------------
 //-------- constructor -----------------------------------------------------
 //--------------------------------------------------------------------------
+KOKKOS_FUNCTION
 WedSCV::WedSCV()
   : MasterElement()
 {
@@ -73,14 +74,6 @@ WedSCV::WedSCV()
   MasterElement::intgLoc_.assign(intgLoc_, 18+intgLoc_);
   // shifted
   MasterElement::intgLocShift_.assign(intgLocShift_, 18+intgLocShift_);
-}
-
-//--------------------------------------------------------------------------
-//-------- destructor ------------------------------------------------------
-//--------------------------------------------------------------------------
-WedSCV::~WedSCV()
-{
-  // does nothing
 }
 
 //--------------------------------------------------------------------------
@@ -307,6 +300,7 @@ void WedSCV::Mij(
 //--------------------------------------------------------------------------
 //-------- constructor -----------------------------------------------------
 //--------------------------------------------------------------------------
+KOKKOS_FUNCTION
 WedSCS::WedSCS()
   : MasterElement()
 {
@@ -314,8 +308,6 @@ WedSCS::WedSCS()
   MasterElement::nodesPerElement_ = nodesPerElement_;
   MasterElement::numIntPoints_ = numIntPoints_;
 
-  // define L/R mappings
-  MasterElement::lrscv_.assign(lrscv_, 18+lrscv_);
   // elem-edge mapping from ip
   MasterElement::scsIpEdgeOrd_.assign(scsIpEdgeOrd_, numIntPoints_+scsIpEdgeOrd_); 
   // define opposing node
@@ -349,14 +341,6 @@ WedSCS::WedSCS()
       ++index;
     }
   }
-}
-
-//--------------------------------------------------------------------------
-//-------- destructor ------------------------------------------------------
-//--------------------------------------------------------------------------
-WedSCS::~WedSCS()
-{
-  // does nothing
 }
 
 //--------------------------------------------------------------------------
@@ -798,7 +782,7 @@ const int *
 WedSCS::adjacentNodes()
 {
   // define L/R mappings
-  return &lrscv_[0];
+  return lrscv_;
 }
 
 //--------------------------------------------------------------------------

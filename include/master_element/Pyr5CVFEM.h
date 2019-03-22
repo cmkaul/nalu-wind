@@ -43,8 +43,10 @@ public:
   using MasterElement::shape_fcn;
   using MasterElement::shifted_shape_fcn;
 
+  KOKKOS_FUNCTION
   PyrSCV();
-  virtual ~PyrSCV();
+  KOKKOS_FUNCTION
+  virtual ~PyrSCV() = default;
 
   const int * ipNodeMap(int ordinal = 0);
 
@@ -132,9 +134,12 @@ public:
   using MasterElement::determinant;
   using MasterElement::shape_fcn;
   using MasterElement::shifted_shape_fcn;
+  using MasterElement::adjacentNodes;
 
+  KOKKOS_FUNCTION
   PyrSCS();
-  virtual ~PyrSCS();
+  KOKKOS_FUNCTION
+  virtual ~PyrSCS() = default;
 
   const int * ipNodeMap(int ordinal = 0);
 
@@ -206,7 +211,7 @@ public:
     double *metric,
     double *deriv);
 
-  const int * adjacentNodes();
+  virtual const int * adjacentNodes() final;
 
   const int * scsIpEdgeOrd();
 

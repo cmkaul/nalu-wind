@@ -98,6 +98,7 @@ void tri_gradient_operator(
 //--------------------------------------------------------------------------
 //-------- constructor -----------------------------------------------------
 //--------------------------------------------------------------------------
+KOKKOS_FUNCTION
 Tri32DSCV::Tri32DSCV()
   : MasterElement()
 {
@@ -109,14 +110,6 @@ Tri32DSCV::Tri32DSCV()
   MasterElement::ipNodeMap_.assign   (ipNodeMap_,    3+ipNodeMap_);
   MasterElement::intgLoc_.assign     (intgLoc_,      6+intgLoc_);
   MasterElement::intgLocShift_.assign(intgLocShift_, 6+intgLocShift_);
-}
-
-//--------------------------------------------------------------------------
-//-------- destructor ------------------------------------------------------
-//--------------------------------------------------------------------------
-Tri32DSCV::~Tri32DSCV()
-{
-  // does nothing
 }
 
 //--------------------------------------------------------------------------
@@ -344,15 +337,13 @@ void Tri32DSCV::Mij(
 //--------------------------------------------------------------------------
 //-------- constructor -----------------------------------------------------
 //--------------------------------------------------------------------------
+KOKKOS_FUNCTION
 Tri32DSCS::Tri32DSCS()
   : MasterElement()
 {
   MasterElement::nDim_ = nDim_;
   MasterElement::nodesPerElement_ = nodesPerElement_;
   MasterElement::numIntPoints_ = numIntPoints_;
-
-  // define L/R mappings
-  MasterElement::lrscv_.assign(lrscv_, 6+lrscv_);
 
   // elem-edge mapping from ip
   MasterElement::scsIpEdgeOrd_.assign(scsIpEdgeOrd_, 3+scsIpEdgeOrd_);
@@ -384,14 +375,6 @@ Tri32DSCS::Tri32DSCS()
     }
   }
   MasterElement::intgExpFaceShift_.assign(&intgExpFaceShift_[0][0][0], 12+&intgExpFaceShift_[0][0][0]);
-}
-
-//--------------------------------------------------------------------------
-//-------- destructor ------------------------------------------------------
-//--------------------------------------------------------------------------
-Tri32DSCS::~Tri32DSCS()
-{
-  // does nothing
 }
 
 //--------------------------------------------------------------------------

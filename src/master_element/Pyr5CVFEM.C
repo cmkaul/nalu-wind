@@ -124,6 +124,7 @@ void shifted_pyr_deriv(const int npts,
 //--------------------------------------------------------------------------
 //-------- constructor -----------------------------------------------------
 //--------------------------------------------------------------------------
+KOKKOS_FUNCTION
 PyrSCV::PyrSCV()
   : MasterElement()
 {
@@ -138,16 +139,9 @@ PyrSCV::PyrSCV()
 }
 
 //--------------------------------------------------------------------------
-//-------- destructor ------------------------------------------------------
-//--------------------------------------------------------------------------
-PyrSCV::~PyrSCV()
-{
-  // does nothing
-}
-
-//--------------------------------------------------------------------------
 //-------- ipNodeMap -------------------------------------------------------
 //--------------------------------------------------------------------------
+KOKKOS_FUNCTION
 const int *
 PyrSCV::ipNodeMap(
   int /*ordinal*/)
@@ -548,14 +542,13 @@ void fill_intg_exp_face_shift(double* intgExpFaceShift, const int* sideNodeOrdin
 //--------------------------------------------------------------------------
 //-------- constructor -----------------------------------------------------
 //--------------------------------------------------------------------------
+KOKKOS_FUNCTION
 PyrSCS::PyrSCS()
   : MasterElement()
 {
   MasterElement::nDim_ = nDim_;
   MasterElement::nodesPerElement_ = nodesPerElement_;
   MasterElement::numIntPoints_ = numIntPoints_;
-
-  MasterElement::lrscv_.assign(lrscv_, lrscv_+24);
 
   MasterElement::scsIpEdgeOrd_.assign(scsIpEdgeOrd_, scsIpEdgeOrd_+AlgTraits::numScsIp_);
   MasterElement::oppNode_.assign(oppNode_, oppNode_+20);
@@ -570,14 +563,6 @@ PyrSCS::PyrSCS()
 
   fill_intg_exp_face_shift(intgExpFaceShift_, sideNodeOrdinals_);
   MasterElement::intgExpFaceShift_.assign(intgExpFaceShift_,intgExpFaceShift_+48);
-}
-
-//--------------------------------------------------------------------------
-//-------- destructor ------------------------------------------------------
-//--------------------------------------------------------------------------
-PyrSCS::~PyrSCS()
-{
-  // does nothing
 }
 
 //--------------------------------------------------------------------------
@@ -1215,7 +1200,7 @@ const int *
 PyrSCS::adjacentNodes()
 {
   // define L/R mappings
-  return &lrscv_[0];
+  return lrscv_;
 }
 
 //--------------------------------------------------------------------------

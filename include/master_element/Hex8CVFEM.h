@@ -51,7 +51,8 @@ public:
   using AlgTraits = AlgTraitsHex8;
 
   HexSCV();
-  virtual ~HexSCV();
+  KOKKOS_FUNCTION
+  virtual ~HexSCV() = default;
 
   const int * ipNodeMap(int ordinal = 0);
 
@@ -148,10 +149,12 @@ class HexSCS : public MasterElement
 public:
   using AlgTraits = AlgTraitsHex8;
   using AlgTraitsFace = AlgTraitsQuad4;
+  using MasterElement::adjacentNodes;
 
 
   HexSCS();
-  virtual ~HexSCS();
+  KOKKOS_FUNCTION
+  virtual ~HexSCS() = default;
 
   const int * ipNodeMap(int ordinal = 0);
 
@@ -270,7 +273,7 @@ public:
     double *metric,
     double *deriv);
 
-  const int * adjacentNodes();
+  virtual const int * adjacentNodes() final;
 
   const int * scsIpEdgeOrd();
 
