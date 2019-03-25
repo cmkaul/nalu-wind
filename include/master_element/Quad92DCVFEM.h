@@ -94,18 +94,8 @@ protected:
 
   void eval_shape_derivs_at_face_ips();
 
-  const double scsDist_;
-  const int nodes1D_;
-  int numQuad_;
-
   //quadrature info
   std::vector<int> lrscv_;
-  std::vector<double> gaussAbscissae_;
-  std::vector<double> gaussAbscissaeShift_;
-  std::vector<double> gaussWeight_;
-
-  std::vector<int> stkNodeMap_;
-  std::vector<double> scsEndLoc_;
 
   std::vector<double> shapeFunctions_;
   std::vector<double> shapeFunctionsShift_;
@@ -121,7 +111,32 @@ protected:
   };  
 
 
-private:
+protected:
+
+  static const int nDim_ = AlgTraits::nDim_;
+  static const int nodesPerElement_ = AlgTraits::nodesPerElement_;
+  static const int nodes1D_ = 3;
+  static const int numQuad_ = 2;
+
+
+  // map the standard stk (refinement consistent) node numbering
+  // to a tensor-product style node numbering (i.e. node (m,l,k) -> m+npe*l+npe^2*k)
+  const int stkNodeMap_[nodes1D_][nodes1D_] = {
+                  {0, 4, 1}, // bottom row of nodes
+                  {7, 8, 5}, // middle row of nodes
+                  {3, 6, 2}  // top row of nodes
+                };
+
+  const double scsDist_ = std::sqrt(3.0)/3.0;
+  const double scsEndLoc_[4] = { -1.0, -scsDist_, scsDist_, +1.0 };
+
+  const double gaussAbscissaeShift_[nodes1D_][numQuad_] = {{-1.0,-1.0},
+                                                           { 0.0, 0.0},
+                                                           {+1.0,+1.0}};
+
+  double gaussAbscissae_[numQuad_];
+  double gaussWeight_   [numQuad_];
+
   void quad9_shape_fcn(
     int npts,
     const double *par_coord,
@@ -147,7 +162,7 @@ public:
   KOKKOS_FUNCTION
   virtual ~Quad92DSCV() {}
 
-  const int * ipNodeMap(int ordinal = 0) override ;
+  virtual const int * ipNodeMap(int ordinal = 0) const final ;
 
   void determinant(
     SharedMemView<DoubleType**> &coords,
@@ -180,6 +195,10 @@ public:
     double *deriv) override ;
 
 private:
+  static const int numIntPoints_ = AlgTraits::numScvIp_;
+
+  int ipNodeMap_[nodes1D_][nodes1D_][numQuad_][numQuad_]; //[numIntPoints_];
+
   void set_interior_info();
 
   DoubleType jacobian_determinant(
@@ -278,7 +297,7 @@ public:
 
   virtual const int * adjacentNodes() final ;
 
-  const int * ipNodeMap(int ordinal = 0) override ;
+  virtual const int * ipNodeMap(int ordinal = 0) const final ;
 
   int opposingNodes(
     const int ordinal, const int node) override ;
@@ -290,6 +309,13 @@ public:
 
 private:
   std::vector<ContourData> ipInfo_;
+
+  static const int numIntPoints_ = AlgTraits::numScsIp_;
+  static const int ipsPerFace_ = nodes1D_*numQuad_;
+  static const int numFaces_   = 2*nDim_;
+
+  int ipNodeMap_[numFaces_][nodes1D_][numQuad_]; //[numIntPoints_];
+  int oppNode_  [numIntPoints_];
 
   void set_interior_info();
   void set_boundary_info();
@@ -305,7 +331,6 @@ private:
     double *POINTER_RESTRICT shapeDeriv,
     double *POINTER_RESTRICT areaVector ) const;
 
-  int ipsPerFace_;
 };
 
 } // namespace nalu

@@ -52,7 +52,7 @@ public:
   virtual ~HigherOrderHexSCV() {}
 
   void shape_fcn(double *shpfc) final;
-  const int * ipNodeMap(int ordinal = 0) final;
+  virtual const int * ipNodeMap(int ordinal = 0) const final;
 
   void determinant(
     const int nelem,
@@ -95,6 +95,7 @@ private:
   std::vector<double> shapeFunctionVals_;
   std::vector<double> shapeDerivs_;
   std::vector<double> ipWeights_;
+  std::vector<int> ipNodeMap_;
 };
 
 // 3D Hex 27 subcontrol surface
@@ -159,7 +160,7 @@ public:
 
   const int * adjacentNodes() final;
 
-  const int * ipNodeMap(int ordinal = 0) final;
+  virtual const int * ipNodeMap(int ordinal = 0) const final;
 
   const int * side_node_ordinals(int ordinal = 0) final;
 
@@ -184,6 +185,7 @@ public:
 
 private:
   std::vector<int> lrscv_;
+  std::vector<int> oppNode_;
 
   void set_interior_info();
   void set_boundary_info();
@@ -203,6 +205,7 @@ private:
   std::vector<double> shapeDerivs_;
   std::vector<double> expFaceShapeDerivs_;
   std::vector<ContourData> ipInfo_;
+  std::vector<int> ipNodeMap_;
   int ipsPerFace_;
 
   AlignedViewType<DoubleType**[3]> expRefGradWeights_;
@@ -226,7 +229,7 @@ public:
 
   void shape_fcn(double *shpfc) final;
 
-  const int * ipNodeMap(int ordinal = 0);
+  virtual const int * ipNodeMap(int ordinal = 0) const final;
 
   void determinant(
     const int nelem,
@@ -263,6 +266,7 @@ private:
   std::vector<double> shapeFunctionVals_;
   std::vector<double> shapeDerivs_;
   std::vector<double> ipWeights_;
+  std::vector<int> ipNodeMap_;
   int surfaceDimension_;
 };
 
@@ -283,7 +287,7 @@ public:
 
   void shape_fcn(double *shpfc) final;
 
-  const int * ipNodeMap(int ordinal = 0) final;
+  virtual const int * ipNodeMap(int ordinal = 0) const final;
 
   void determinant(
     const int nelem,
@@ -325,6 +329,7 @@ private:
   std::vector<double> shapeFunctionVals_;
   std::vector<double> shapeDerivs_;
   std::vector<double> ipWeights_;
+  std::vector<int> ipNodeMap_;
 };
 class HigherOrderQuad2DSCS final: public MasterElement
 {
@@ -387,7 +392,7 @@ public:
 
   const int * adjacentNodes() final;
 
-  const int * ipNodeMap(int ordinal = 0) final;
+  virtual const int * ipNodeMap(int ordinal = 0) const final;
 
   int opposingNodes(
     const int ordinal, const int node) final;
@@ -427,8 +432,10 @@ private:
   std::vector<double> shapeFunctionVals_;
   std::vector<double> shapeDerivs_;
   std::vector<ContourData> ipInfo_;
+  std::vector<int> ipNodeMap_;
   int ipsPerFace_;
   std::vector<double> expFaceShapeDerivs_;
+  std::vector<int> oppNode_;
 };
 
 class HigherOrderEdge2DSCS final: public MasterElement
@@ -445,7 +452,7 @@ public:
   KOKKOS_FUNCTION
   virtual ~HigherOrderEdge2DSCS() = default;
 
-  const int * ipNodeMap(int ordinal = 0) final;
+  virtual const int * ipNodeMap(int ordinal = 0) const final;
 
   void determinant(
     const int nelem,
@@ -481,6 +488,7 @@ private:
   std::vector<double> shapeFunctionVals_;
   std::vector<double> shapeDerivs_;
   std::vector<double> ipWeights_;
+  std::vector<int> ipNodeMap_;
 };
 
 } // namespace nalu

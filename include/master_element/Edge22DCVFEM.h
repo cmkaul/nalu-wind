@@ -6,8 +6,8 @@
 /*------------------------------------------------------------------------*/
 
 
-#ifndef Tri33DCVFEM_h  
-#define Tri33DCVFEM_h  
+#ifndef Edge22DCVFEM_h 
+#define Edge22DCVFEM_h 
 
 #include <master_element/MasterElement.h>
 
@@ -17,27 +17,24 @@
 #include "SimdInterface.h"
 #include "KokkosInterface.h"
 
-#include <array>
+#include <vector>
 #include <cstdlib>
 #include <stdexcept>
 #include <string>
 #include <array>
 
-
 namespace sierra{
 namespace nalu{
 
-// 3D Tri 3
-class Tri3DSCS : public MasterElement
+// edge 2d
+class Edge2DSCS : public MasterElement
 {
 public:
-
   KOKKOS_FUNCTION
-  Tri3DSCS();
+  Edge2DSCS();
   KOKKOS_FUNCTION
-  virtual ~Tri3DSCS() = default;
-
-  using AlgTraits = AlgTraitsTri3;
+  virtual ~Edge2DSCS() = default;
+  using AlgTraits = AlgTraitsEdge_2D;
   using MasterElement::determinant;
   using MasterElement::shape_fcn;
   using MasterElement::shifted_shape_fcn;
@@ -51,24 +48,16 @@ public:
     double * error );
 
   void shape_fcn(
-     double *shpfc);
+    double *shpfc);
 
-   void shifted_shape_fcn(
-     double *shpfc);
+  void shifted_shape_fcn(
+    double *shpfc);
 
-   void tri_shape_fcn(
-     const int npts,
-     const double *par_coord,
-     double* shape_fcn);
-
-   double isInElement(
-     const double *elemNodalCoord,
-     const double *pointCoord,
-     double *isoParCoord);
-
-  double parametric_distance(
-    const std::array<double,3> &x);
-
+  double isInElement(
+    const double *elemNodalCoord,
+    const double *pointCoord,
+    double *isoParCoord);
+  
   void interpolatePoint(
     const int &nComp,
     const double *isoParCoord,
@@ -84,27 +73,20 @@ public:
     const double *isoParCoord,
     const double *coords,
     double *normal);
-private:
+
+  double parametric_distance(const std::vector<double> &x);
+
+  const double elemThickness_;  
+
+private :
   static constexpr int nDim_ = AlgTraits::nDim_;
   static constexpr int nodesPerElement_ = AlgTraits::nodesPerElement_;
   static constexpr int numIntPoints_ = AlgTraits::numScsIp_;
+  static constexpr double scaleToStandardIsoFac_ = 2.0;
+  const int ipNodeMap_[2] = {0,1};
+  const double intgLoc_[2] = {-0.25, 0.25};
+  const double intgLocShift_[2] = {-0.50, 0.50};
 
-  // define ip node mappings; ordinal size = 1
-  const int ipNodeMap_[3] = {0, 1, 2};
-
-  // standard integration location
-  static constexpr double seven36ths = 7.0/36.0;
-  static constexpr double eleven18ths = 11.0/18.0;
-  const double intgLoc_[6] = {
-   seven36ths,   seven36ths,  // surf 1
-   eleven18ths,  seven36ths,  // surf 2
-   seven36ths,   eleven18ths};// surf 3
-
-  // shifted
-  const double intgLocShift_[6] = {
-    0.00,   0.00, // surf 1
-    1.00,   0.00, // surf 2
-    0.00,   1.00};// surf 3
 };
 
 } // namespace nalu
