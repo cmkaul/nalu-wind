@@ -17,7 +17,7 @@ namespace sierra {
 namespace nalu {
 
 EnthalpyABLDampSrcNodeSuppAlg::EnthalpyABLDampSrcNodeSuppAlg(
-  Realm& realm, ABLForcingAlgorithm* abldamp)
+  Realm& realm, ABLDampingAlgorithm* abldamp)
   : SupplementalAlgorithm(realm),
     ablDamp_(abldamp),
     nDim_(realm.meta_data().spatial_dimension())
@@ -49,7 +49,7 @@ EnthalpyABLDampSrcNodeSuppAlg::EnthalpyABLDampSrcNodeSuppAlg(
      created in bdyLayerStats->setup */
   //CK: TODO: I can't figure out when that is executed relative to this!
   heightIndex_ = meta.get_field<ScalarIntFieldType>(
-    stk::topology::NODE_RANK, "bdy_layer_height_index_field")
+    stk::topology::NODE_RANK, "bdy_layer_height_index_field");
 }
 
 void
@@ -65,14 +65,20 @@ EnthalpyABLDampSrcNodeSuppAlg::node_execute(
   
   //CK: tentative here
   //Getting some values needed from the damping algorithm
-  const double dampHeight = ablDamp_->minDampHeightTemperature
+  const double dampHeight = ablDamp_->minDampingHeightTemperature
   const double dampCoeff = ablDamp_->dampingCoeffTemperature[ih]
   const double dampTemp = ablDamp_->TDamp[ih]
   // If below the minimum damping heihght, return without doing anything
-  if (pt[nDim_-1] < dampHeight) return;
+  if (pt[nDim_-1] < dampHeight) {
 
-  rhs[0] += dualVol * rhoNP1 * spHeat * dampCoeff * (dampTemp-temp);
-  lhs[0] += 0.0;
+
+  }else{  
+    rhs[0] += dualVol * rhoNP1 * spHeat * dampCoeff * (dampTemp-temp);
+    lhs[0] += 0.0;
+
+  }
+
+
 }
 
 } // nalu

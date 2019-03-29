@@ -40,7 +40,7 @@ private:
   VectorFieldType* coords_;
 
   //! Pointer to the density
-  ScalarFieldType* densityNP1_
+  ScalarFieldType* densityNP1_;
 
   //! Pointer to dual volume of the mesh
   ScalarFieldType* dualNodalVolume_;
@@ -52,10 +52,10 @@ private:
   ScalarFieldType* specificHeat_;
 
   //! Pointer to the temperature
-  ScalarFieldType* temperatureNP1
+  ScalarFieldType* temperatureNP1_;
 
   //! Pointer to the ABL height index field
-  ScalarIntFieldType* heightIndex_
+  ScalarIntFieldType* heightIndex_;
 
   const int nDim_;
 };

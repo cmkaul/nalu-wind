@@ -33,7 +33,7 @@ MomentumABLDampSrcNodeSuppAlg::MomentumABLDampSrcNodeSuppAlg(
   VectorFieldType* velocity_ = meta.get_field<VectorFieldType>(
     stk::topology::NODE_RANK, "velocity");
   // Set access to the correct  update state
-  velocityNP1_ = &(velocity__>field_of_state(stk::mesh::StateNP1));
+  velocityNP1_ = &(velocity_>field_of_state(stk::mesh::StateNP1));
   // Get the node volume for weighting the source term 
   dualNodalVolume_ = meta.get_field<ScalarFieldType>(
     stk::topology::NODE_RANK, "dual_nodal_volume");
@@ -41,7 +41,7 @@ MomentumABLDampSrcNodeSuppAlg::MomentumABLDampSrcNodeSuppAlg(
      created in bdyLayerStats->setup */
   //CK: TODO: I can't figure out when that is executed relative to this!
   heightIndex_ = meta.get_field<ScalarIntFieldType>(
-    stk::topology::NODE_RANK, "bdy_layer_height_index_field")
+    stk::topology::NODE_RANK, "bdy_layer_height_index_field");
   // Get the number of spatial dimensions
   nDim_ = meta.spatial_dimension(); 
   
@@ -60,16 +60,21 @@ MomentumABLDampSrcNodeSuppAlg::node_execute(
   
   //CK: tentative here
   //Getting some values needed from the damping algorithm
-  const double dampHeight = ablDamp_->minDampHeightMomentum
+  const double dampHeight = ablDamp_->minDampingHeightMomentum
   const double dampCoeff = ablDamp_->dampingCoeffMomentum[ih]
   const double* dampVel = ablDamp_->UDamp_[ih].data()
   // If below the minimum damping heihght, return without doing anything
-  if (pt[nDim_-1] < dampHeight) return;
+  if (pt[nDim_-1] < dampHeight){
 
-  // Add the momentum source into the RHS
-  for (int i = 0; i < nDim_; i++) {
-    rhs[i] += dualVol * rhoNP1* dampCoeff * (dampVel[d]-vel[d]);
+  }else{  
+    // Add the momentum source into the RHS
+    for (int i = 0; i < nDim_; i++) {
+      rhs[i] += dualVol * rhoNP1* dampCoeff * (dampVel[i]-vel[i]);
+      }
+    
   }
+
+
 }
 
 } // namespace nalu

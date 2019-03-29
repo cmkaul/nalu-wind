@@ -207,6 +207,7 @@ namespace nalu{
     turbulenceAveragingPostProcessing_(NULL),
     dataProbePostProcessing_(NULL),
     actuator_(NULL),
+    ablDampingAlg_(NULL),
     ablForcingAlg_(NULL),
     nodeCount_(0),
     estimateMemoryOnly_(false),
@@ -321,6 +322,9 @@ Realm::~Realm()
   // delete HDF5 file ptr
   if ( NULL != HDF5ptr_ )
     delete HDF5ptr_;
+
+  // Delete abl damping pointer
+  if (NULL != ablDampingAlg_) delete ablDampingAlg_;
 
   // Delete abl forcing pointer
   if (NULL != ablForcingAlg_) delete ablForcingAlg_;
@@ -1988,6 +1992,12 @@ Realm::advance_time_step()
     actuator_->execute();
   }
 
+
+  // Check for ABL damping; prepare to damp for this time step
+  if ( NULL != ablDampingAlg_) {
+    ablDampingAlg_->execute();
+  }
+
   // Check for ABL forcing; estimate source terms for this time step
   if ( NULL != ablForcingAlg_) {
     ablForcingAlg_->execute();
@@ -2507,7 +2517,9 @@ Realm::initialize_post_processing_algorithms()
   if ( NULL != actuator_ ) {
     actuator_->initialize();
   }
-
+  if ( NULL != ablDampingAlg_) {
+    ablDampingAlg_->initialize();
+  }
   if ( NULL != ablForcingAlg_) {
     ablForcingAlg_->initialize();
   }

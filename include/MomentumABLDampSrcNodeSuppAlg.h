@@ -48,7 +48,7 @@ private:
   ScalarFieldType* dualNodalVolume_;
   
   //! Pointer to the height index array created in bdyLayerStats
-  ScalarIntFieldType* heightIndex_
+  ScalarIntFieldType* heightIndex_;
 
   //! Spatial dimension of the computational mesh
   const int nDim_;
