@@ -60,18 +60,18 @@ EnthalpyABLDampSrcNodeSuppAlg::node_execute(
   const double dualVol = *stk::mesh::field_data(*dualNodalVolume_, node);
   const double rhoNP1 = *stk::mesh::field_data(*densityNP1_, node);
   const double temp = *stk::mesh::field_data(*temperatureNP1_, node);
-  const int ih = stk::mesh::field_data(*heightIndex_, node);
+  const int ih = *stk::mesh::field_data(*heightIndex_, node);
   const double spHeat = *stk::mesh::field_data(*specificHeat_, node);
   
   //CK: tentative here
   //Getting some values needed from the damping algorithm
-  const double dampHeight = ablDamp_->minDampingHeightTemperature
-  const double dampCoeff = ablDamp_->dampingCoeffTemperature[ih]
-  const double dampTemp = ablDamp_->TDamp[ih]
+  const double dampHeight = ablDamp_->minDampingHeightTemperature;
+  const double dampCoeff = ablDamp_->dampingCoeffTemperature[ih];
+  const double dampTemp = ablDamp_->TDamp[ih];
   // If below the minimum damping heihght, return without doing anything
   if (pt[nDim_-1] < dampHeight) {
-
-
+    rhs[0] += 0.0;
+    lhs[0] += 0.0;
   }else{  
     rhs[0] += dualVol * rhoNP1 * spHeat * dampCoeff * (dampTemp-temp);
     lhs[0] += 0.0;
