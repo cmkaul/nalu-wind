@@ -52,6 +52,7 @@
 #include <ScalarMassBackwardEulerNodeSuppAlg.h>
 #include <ScalarMassBDF2NodeSuppAlg.h>
 #include <ScalarMassElemSuppAlgDep.h>
+#include <EnthalpyABLDampSrcNodeSuppAlg.h>
 #include <EnthalpyABLSrcNodeSuppAlg.h>
 #include <Simulation.h>
 #include <TimeIntegrator.h>
