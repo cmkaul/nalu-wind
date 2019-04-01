@@ -73,9 +73,11 @@ public:
   };
 
   //! Smoothly increasing damping coefficient profile for Momentum
+  double gammaMomentum_;
   std::vector<double> dampingCoeffMomentum;
 
   //! Smoothly increasing damping coefficient profile for Temperature
+  double gammaTemperature_;
   std::vector<double> dampingCoeffTemperature;
  
   //! Base of the damping layer for momentum
@@ -149,7 +151,7 @@ private:
   void compute_momentum_target_profile();
 
   //! Compute average planar temperature and estimate source term
-  void compute_temperature_profile();
+  void compute_temperature_target_profile();
 
   //! Reference to Realm
   Realm& realm_;

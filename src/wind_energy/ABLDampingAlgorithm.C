@@ -47,7 +47,7 @@ ABLDampingAlgorithm::ABLDampingAlgorithm(Realm& realm, const YAML::Node& node)
     velX_(0),
     velY_(0),
     velZ_(0),
-    temp_(0),
+    temp_(0)
 {
   if (realm_.bdyLayerStats_ == nullptr)
     throw std::runtime_error("ABL Damping requires ABL Boundary Layer statistics");
@@ -196,7 +196,7 @@ ABLDampingAlgorithm::initialize()
     dampingCoeffMomentum.resize(nAblHeights);
     UDamp.resize(nAblHeights);
 
-    for (size_t i = 0; i < nAblHeights; i++) {
+    for (int i = 0; i < nAblHeights; i++) {
       UDamp[i].resize(ndim);
       if (ablHeights[i]< minDampingHeightMomentum){
         dampingCoeffMomentum[i] = 0.0;
@@ -291,7 +291,7 @@ ABLDampingAlgorithm::compute_momentum_target_profile()
         utils::linear_interp(velZTimes_, velZ_[ih], currTime, timeInterpVelZ[ih]);
       }
       //! Second interp in height
-      for (size_t ih=0; ih<nAblHeights; ih++) {
+      for (int ih=0; ih<nAblHeights; ih++) {
         utils::linear_interp(velHeights_, timeInterpVelX, ablHeights[ih], UDamp[ih][0]);
         utils::linear_interp(velHeights_, timeInterpVelY, ablHeights[ih], UDamp[ih][1]);
         utils::linear_interp(velHeights_, timeInterpVelZ, ablHeights[ih], UDamp[ih][2]);
@@ -361,7 +361,7 @@ ABLDampingAlgorithm::compute_temperature_target_profile)
       utils::linear_interp(tempTimes_, temp_[ih], currTime, timeInterpTemp[ih]);
     }
     //! Second interp in height
-    for (size_t ih =0; ih < nAblHeights; ih++){
+    for (int ih =0; ih < nAblHeights; ih++){
       utils::linear_interp(tempHeights_, timeInterpTemp, ablHeights[ih], TDamp[ih]);
 
     }
