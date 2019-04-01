@@ -32,12 +32,12 @@ namespace nalu {
 
 ABLDampingAlgorithm::ABLDampingAlgorithm(Realm& realm, const YAML::Node& node)
   : realm_(realm),
+    minDampingHeightMomentum(-999.),
+    minDampingHeightTemperature(-999.),
     momSrcType_(ABLDampingAlgorithm::OFF),
     tempSrcType_(ABLDampingAlgorithm::OFF),
     gammaMomentum_(0.001),
     gammaTemperature_(0.001),
-    minDampingHeightMomentum(-999.),
-    minDampingHeightTemperature(-999.),
     velHeights_(0),
     tempHeights_(0),
     velXTimes_(0),
@@ -340,7 +340,7 @@ ABLDampingAlgorithm::compute_momentum_target_profile()
 
 
 void
-ABLDampingAlgorithm::compute_temperature_target_profile())
+ABLDampingAlgorithm::compute_temperature_target_profile()
 {
   const double dt = realm_.get_time_step();
   const double currTime = realm_.get_current_time();
