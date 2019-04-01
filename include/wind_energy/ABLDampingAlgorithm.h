@@ -73,11 +73,9 @@ public:
   };
 
   //! Smoothly increasing damping coefficient profile for Momentum
-  double gammaMomentum_;
   std::vector<double> dampingCoeffMomentum;
 
   //! Smoothly increasing damping coefficient profile for Temperature
-  double gammaTemperature_;
   std::vector<double> dampingCoeffTemperature;
  
   //! Base of the damping layer for momentum

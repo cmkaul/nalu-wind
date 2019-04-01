@@ -265,13 +265,14 @@ void
 ABLDampingAlgorithm::compute_momentum_target_profile()
 
 {
-  const double dt = realm_.get_time_step();
   const double currTime = realm_.get_current_time();
   auto* bdyLayerStats = realm_.bdyLayerStats_;
   //! CK not sure about this! 
   const std::vector<double>& ablHeights = bdyLayerStats->abl_heights();
   const int nAblHeights = bdyLayerStats->abl_num_levels();
-  std::vector<double> timeInterpVelX, timeInterpVelY, timeInterpVelZ
+  std::vector<double> timeInterpVelX;
+  std::vector<double> timeInterpVelY; 
+  std::vector<double> timeInterpVelZ; 
 
   timeInterpVelX.resize(nAblHeights);
   timeInterpVelY.resize(nAblHeights);
@@ -339,7 +340,7 @@ ABLDampingAlgorithm::compute_momentum_target_profile()
 
 
 void
-ABLDampingAlgorithm::compute_temperature_target_profile)
+ABLDampingAlgorithm::compute_temperature_target_profile())
 {
   const double dt = realm_.get_time_step();
   const double currTime = realm_.get_current_time();
