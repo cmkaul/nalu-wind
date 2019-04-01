@@ -35,9 +35,9 @@ ABLDampingAlgorithm::ABLDampingAlgorithm(Realm& realm, const YAML::Node& node)
     momSrcType_(ABLDampingAlgorithm::OFF),
     tempSrcType_(ABLDampingAlgorithm::OFF),
     gammaMomentum_(0.001),
-    gammaTemperature_(0.001);
-    minDampingHeightMomentum(-999.);
-    minDampingHeightTemperature(-999.);
+    gammaTemperature_(0.001),
+    minDampingHeightMomentum(-999.),
+    minDampingHeightTemperature(-999.),
     velHeights_(0),
     tempHeights_(0),
     velXTimes_(0),
@@ -105,7 +105,7 @@ ABLDampingAlgorithm::load_momentum_info(const YAML::Node& node)
     create_interp_arrays(nHeights, vxtmp, velXTimes_, velX_);
     create_interp_arrays(nHeights, vytmp, velYTimes_, velY_);
     create_interp_arrays(nHeights, vztmp, velZTimes_, velZ_);
-  } elseif (momSrcType_ == MEAN_PROFILE){
+  } else if (momSrcType_ == MEAN_PROFILE){
     //! Do something else?
   }
 }
@@ -213,7 +213,7 @@ ABLDampingAlgorithm::initialize()
       << std::endl;
     dampingCoeffTemperature.resize(nAblHeights);
     TDamp.resize(nAblHeights);
-    for (size_t i = 0; i < nAblHeights; i++) {
+    for (int i = 0; i < nAblHeights; i++) {
       if (ablHeights[i]< minDampingHeightMomentum){
         dampingCoeffTemperature[i] = 0.0;
       }else{
