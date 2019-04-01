@@ -1,6 +1,7 @@
 
 #include "wind_energy/ABLDampingAlgorithm.h"
 #include "Realm.h"
+#include "NaluEnv.h"
 #include "xfer/Transfer.h"
 #include "xfer/Transfers.h"
 #include "utils/LinearInterpolation.h"
@@ -64,6 +65,8 @@ ABLDampingAlgorithm::load(const YAML::Node& node)
   get_if_present(node, "output_frequency", outputFreq_, outputFreq_);
   get_if_present(node, "output_format", outFileFmt_, outFileFmt_);
   */
+  NaluEnv::self().naluOutputP0()<< "ABLDampingAlgorithm::load." << std::endl;
+ 
 
   if (node["momentum"])
     load_momentum_info(node["momentum"]);
@@ -76,6 +79,7 @@ void
 ABLDampingAlgorithm::load_momentum_info(const YAML::Node& node)
 {
   std::string mom_type = node["type"].as<std::string>();
+  NaluEnv::self().naluOutputP0()<< "ABLDampingAlgorithm::load_momentum_info." << std::endl;
   if (mom_type == "given_profile") {
     momSrcType_ = ABLDampingAlgorithm::GIVEN_PROFILE;
   } else if (mom_type == "mean_profile") {
@@ -114,6 +118,8 @@ void
 ABLDampingAlgorithm::load_temperature_info(const YAML::Node& node)
 {
   std::string temp_type = node["type"].as<std::string>();
+
+  NaluEnv::self().naluOutputP0()<< "ABLDampingAlgorithm::load._temperature_info" << std::endl;
   if (temp_type == "given_profile") {
     tempSrcType_ = ABLDampingAlgorithm::GIVEN_PROFILE;
   } else if (temp_type == "mean_profile") {
@@ -156,7 +162,7 @@ ABLDampingAlgorithm::create_interp_arrays(
    *    time[nTimes] = inp[nTimes,0], and
    *    value[nHeights, nTimes] -> swap rows/cols from input
    */
-
+    NaluEnv::self().naluOutputP0() << "ABLDampingAlgorithm::create_interp_arrays" << std::endl;
   // Check that all timesteps contain values for all the heights
   for (auto vx : inpArr) {
     ThrowAssert((vx.size() == (nHeights + 1)));
@@ -189,6 +195,8 @@ ABLDampingAlgorithm::initialize()
   const double zdTemp = zTop - minDampingHeightTemperature;
   const double halfPi = 0.5 * std::acos(-1.0);
   double sinArg;
+  
+  NaluEnv::self().naluOutputP0()<< "ABLDampingAlgorithm::initialize" << std::endl;
 
   if (momSrcType_ != OFF) {
     NaluEnv::self().naluOutputP0()
@@ -253,7 +261,8 @@ ABLDampingAlgorithm::initialize()
 
 void
 ABLDampingAlgorithm::execute()
-{
+{  
+  NaluEnv::self().naluOutputP0()<< "ABLDampingAlgorithm::execute" << std::endl;
   if (momentumDampingOn())
     compute_momentum_target_profile();
 
