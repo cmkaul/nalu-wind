@@ -54,7 +54,7 @@ MomentumABLDampSrcNodeSuppAlg::node_execute(
   const double* pt = stk::mesh::field_data(*coords_, node);
   const double dualVol = *stk::mesh::field_data(*dualNodalVolume_, node);
   const double rhoNP1 = *stk::mesh::field_data(*densityNP1_, node);
-  const double* vel = *stk::mesh::field_data(*velocityNP1_, node);
+  const double* vel = stk::mesh::field_data(*velocityNP1_, node);
   const int ih = *stk::mesh::field_data(*heightIndex_, node);
   
   //CK: tentative here
