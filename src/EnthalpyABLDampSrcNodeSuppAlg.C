@@ -26,7 +26,7 @@ EnthalpyABLDampSrcNodeSuppAlg::EnthalpyABLDampSrcNodeSuppAlg(
   // ! get the realm meta data
   stk::mesh::MetaData& meta = realm.meta_data();
   //! Get the coordinates  
-  VectorFieldType* coords_ = meta.get_field<VectorFieldType>(
+  coords_ = meta.get_field<VectorFieldType>(
     stk::topology::NODE_RANK, "coordinates");
   //! Get the density
   ScalarFieldType* density = realm.meta_data().get_field<ScalarFieldType>(

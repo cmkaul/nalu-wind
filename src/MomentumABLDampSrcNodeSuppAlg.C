@@ -33,7 +33,7 @@ MomentumABLDampSrcNodeSuppAlg::MomentumABLDampSrcNodeSuppAlg(
   VectorFieldType* velocity_ = meta.get_field<VectorFieldType>(
     stk::topology::NODE_RANK, "velocity");
   // Set access to the correct  update state
-  velocityNP1_ = &(velocity_>field_of_state(stk::mesh::StateNP1));
+  velocityNP1_ = &(velocity_->field_of_state(stk::mesh::StateNP1));
   // Get the node volume for weighting the source term 
   dualNodalVolume_ = meta.get_field<ScalarFieldType>(
     stk::topology::NODE_RANK, "dual_nodal_volume");
@@ -42,8 +42,7 @@ MomentumABLDampSrcNodeSuppAlg::MomentumABLDampSrcNodeSuppAlg(
   //CK: TODO: I can't figure out when that is executed relative to this!
   heightIndex_ = meta.get_field<ScalarIntFieldType>(
     stk::topology::NODE_RANK, "bdy_layer_height_index_field");
-  // Get the number of spatial dimensions
-  nDim_ = meta.spatial_dimension(); 
+
   
   }
 
@@ -56,13 +55,13 @@ MomentumABLDampSrcNodeSuppAlg::node_execute(
   const double dualVol = *stk::mesh::field_data(*dualNodalVolume_, node);
   const double rhoNP1 = *stk::mesh::field_data(*densityNP1_, node);
   const double* vel = *stk::mesh::field_data(*velocityNP1_, node);
-  const int ih = stk::mesh::field_data(*heightIndex_, node);
+  const int ih = *stk::mesh::field_data(*heightIndex_, node);
   
   //CK: tentative here
   //Getting some values needed from the damping algorithm
-  const double dampHeight = ablDamp_->minDampingHeightMomentum
-  const double dampCoeff = ablDamp_->dampingCoeffMomentum[ih]
-  const double* dampVel = ablDamp_->UDamp_[ih].data()
+  const double dampHeight = ablDamp_->minDampingHeightMomentum;
+  const double dampCoeff = ablDamp_->dampingCoeffMomentum[ih];
+  const double* dampVel = ablDamp_->UDamp_[ih].data();
   // If below the minimum damping heihght, return without doing anything
   if (pt[nDim_-1] < dampHeight){
 
