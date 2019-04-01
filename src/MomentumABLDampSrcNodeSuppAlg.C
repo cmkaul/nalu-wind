@@ -61,7 +61,7 @@ MomentumABLDampSrcNodeSuppAlg::node_execute(
   //Getting some values needed from the damping algorithm
   const double dampHeight = ablDamp_->minDampingHeightMomentum;
   const double dampCoeff = ablDamp_->dampingCoeffMomentum[ih];
-  const double* dampVel = ablDamp_->UDamp_[ih].data();
+  const double* dampVel = ablDamp_->UDamp[ih].data();
   // If below the minimum damping heihght, return without doing anything
   if (pt[nDim_-1] < dampHeight){
 
