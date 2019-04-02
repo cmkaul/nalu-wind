@@ -443,6 +443,10 @@ Realm::initialize()
   // property maps and evaluation algorithms
   setup_property();
 
+
+  // Colleen (CK) try simply moving this ahead?
+  setup_post_processing_algorithms();
+  
   // interior algorithm creation
   setup_interior_algorithms();
 
@@ -450,7 +454,7 @@ Realm::initialize()
   setup_bc();
   
   // post processing algorithm creation
-  setup_post_processing_algorithms();
+  ///setup_post_processing_algorithms();
 
   // create initial conditions
   setup_initial_conditions();
