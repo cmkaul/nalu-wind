@@ -280,13 +280,14 @@ ABLDampingAlgorithm::compute_momentum_target_profile()
   //! CK not sure about this! 
   const std::vector<double>& ablHeights = bdyLayerStats->abl_heights();
   const int nAblHeights = bdyLayerStats->abl_num_levels();
+  const int nInputHeights = velHeights_.size();
   std::vector<double> timeInterpVelX;
   std::vector<double> timeInterpVelY; 
   std::vector<double> timeInterpVelZ; 
 
-  timeInterpVelX.resize(nAblHeights);
-  timeInterpVelY.resize(nAblHeights);
-  timeInterpVelZ.resize(nAblHeights);
+  timeInterpVelX.resize(nInputHeights);
+  timeInterpVelY.resize(nInputHeights;
+  timeInterpVelZ.resize(nInputHeights);
   
 
   if (momSrcType_ == MEAN_PROFILE) {
@@ -295,7 +296,7 @@ ABLDampingAlgorithm::compute_momentum_target_profile()
     }
   }else if( momSrcType_ == GIVEN_PROFILE){
       //! First interp in time
-      for (size_t ih = 0; ih < velHeights_.size(); ih++) {
+      for (size_t ih = 0; ih < nInputHeights; ih++) {
         // Interpolate the velocities from the table to the current time
         utils::linear_interp(velXTimes_, velX_[ih], currTime, timeInterpVelX[ih]);
         utils::linear_interp(velYTimes_, velY_[ih], currTime, timeInterpVelY[ih]);
@@ -357,9 +358,10 @@ ABLDampingAlgorithm::compute_temperature_target_profile()
   //! CK not sure about this! 
   const std::vector<double>& ablHeights = bdyLayerStats->abl_heights();
   const int nAblHeights = bdyLayerStats->abl_num_levels();
+  const int nInputHeights = tempHeights_.size();
   std::vector<double> timeInterpTemp;
 
-  timeInterpTemp.resize(nAblHeights);
+  timeInterpTemp.resize(nInputHeights);
 
   if (tempSrcType_ == MEAN_PROFILE) {
     for (size_t ih=0; ih < tempHeights_.size(); ih++) {
@@ -367,7 +369,7 @@ ABLDampingAlgorithm::compute_temperature_target_profile()
     }
   }else if (tempSrcType_ == GIVEN_PROFILE){
     //! First interp in time
-    for (size_t ih = 0; ih < tempHeights_.size(); ih++) {
+    for (size_t ih = 0; ih < nInputHeights; ih++) {
       utils::linear_interp(tempTimes_, temp_[ih], currTime, timeInterpTemp[ih]);
     }
     //! Second interp in height
