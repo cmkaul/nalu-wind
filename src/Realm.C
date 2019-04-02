@@ -2519,7 +2519,7 @@ Realm::initialize_post_processing_algorithms()
   }
   //! Colleen (CK)
   if ( NULL != bdyLayerStats_) {
-    bdyLayerStats_>initialize();
+    bdyLayerStats_->initialize();
   }
   if ( NULL != ablDampingAlg_) {
     ablDampingAlg_->initialize();
