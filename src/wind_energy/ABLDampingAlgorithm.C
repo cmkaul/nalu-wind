@@ -185,7 +185,8 @@ ABLDampingAlgorithm::create_interp_arrays(
 void
 ABLDampingAlgorithm::initialize()
 { 
-  auto* bdyLayerStats = realm_.bdyLayerStats_;
+  NaluEnv::self().naluOutputP0()<< "ABLDampingAlgorithm::initialize" << std::endl;
+  auto*  = realm_.bdyLayerStats_;
   //! CK not sure about this! 
   const std::vector<double>& ablHeights = bdyLayerStats->abl_heights();
   const int nAblHeights = bdyLayerStats->abl_num_levels();
@@ -196,7 +197,7 @@ ABLDampingAlgorithm::initialize()
   const double halfPi = 0.5 * std::acos(-1.0);
   double sinArg;
   
-  NaluEnv::self().naluOutputP0()<< "ABLDampingAlgorithm::initialize" << std::endl;
+  
 
   if (momSrcType_ != OFF) {
     NaluEnv::self().naluOutputP0()

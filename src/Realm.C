@@ -656,8 +656,8 @@ Realm::look_ahead_and_creation(const YAML::Node & node)
   }
   // ABL Damping parameters
   if (node["abl_damping"]) {
-      const YAML::Node ablNode = node["abl_damping"];
-      ablDampingAlg_ = new ABLDampingAlgorithm(*this, ablNode);
+      const YAML::Node dampNode = node["abl_damping"];
+      ablDampingAlg_ = new ABLDampingAlgorithm(*this, dampNode);
   }
 }
   
@@ -2516,6 +2516,10 @@ Realm::initialize_post_processing_algorithms()
   // check for actuator... probably a better place for this
   if ( NULL != actuator_ ) {
     actuator_->initialize();
+  }
+  //! Colleen (CK)
+  if ( NULL != bdyLayerStats_) {
+    bdyLayerStats_>initialize();
   }
   if ( NULL != ablDampingAlg_) {
     ablDampingAlg_->initialize();
