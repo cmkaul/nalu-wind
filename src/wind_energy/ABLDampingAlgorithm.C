@@ -291,7 +291,7 @@ ABLDampingAlgorithm::compute_momentum_target_profile()
   
 
   if (momSrcType_ == MEAN_PROFILE) {
-    for (int ih=0; ih < velHeights_.size(); ih++) {
+    for (int ih=0; ih < nInputHeights; ih++) {
       bdyLayerStats->velocity(ablHeights[ih], UDamp[ih].data());
     }
   }else if( momSrcType_ == GIVEN_PROFILE){
