@@ -291,12 +291,12 @@ ABLDampingAlgorithm::compute_momentum_target_profile()
   
 
   if (momSrcType_ == MEAN_PROFILE) {
-    for (size_t ih=0; ih < velHeights_.size(); ih++) {
+    for (int ih=0; ih < velHeights_.size(); ih++) {
       bdyLayerStats->velocity(ablHeights[ih], UDamp[ih].data());
     }
   }else if( momSrcType_ == GIVEN_PROFILE){
       //! First interp in time
-      for (size_t ih = 0; ih < nInputHeights; ih++) {
+      for (int ih = 0; ih < nInputHeights; ih++) {
         // Interpolate the velocities from the table to the current time
         utils::linear_interp(velXTimes_, velX_[ih], currTime, timeInterpVelX[ih]);
         utils::linear_interp(velYTimes_, velY_[ih], currTime, timeInterpVelY[ih]);
@@ -369,7 +369,7 @@ ABLDampingAlgorithm::compute_temperature_target_profile()
     }
   }else if (tempSrcType_ == GIVEN_PROFILE){
     //! First interp in time
-    for (size_t ih = 0; ih < nInputHeights; ih++) {
+    for (int ih = 0; ih < nInputHeights; ih++) {
       utils::linear_interp(tempTimes_, temp_[ih], currTime, timeInterpTemp[ih]);
     }
     //! Second interp in height
