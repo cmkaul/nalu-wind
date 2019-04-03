@@ -286,7 +286,7 @@ ABLDampingAlgorithm::compute_momentum_target_profile()
   std::vector<double> timeInterpVelZ; 
 
   timeInterpVelX.resize(nInputHeights);
-  timeInterpVelY.resize(nInputHeights;
+  timeInterpVelY.resize(nInputHeights);
   timeInterpVelZ.resize(nInputHeights);
   
 
