@@ -62,14 +62,21 @@ MomentumABLDampSrcNodeSuppAlg::node_execute(
   const double dampHeight = ablDamp_->minDampingHeightMomentum;
   const double dampCoeff = ablDamp_->dampingCoeffMomentum[ih];
   const double* dampVel = ablDamp_->UDamp[ih].data();
-  double myrhs;
-  double a;
+  double myrhs = 0.0;
+  double a = 1.0;
   // If below the minimum damping heihght, return without doing anything
   if (pt[nDim_-1] < dampHeight){
 
   }else{  
     // Add the momentum source into the RHS
     for (int i = 0; i < nDim_; i++) {
+      myrhs = rhs[i];
+      if (std::isfinite(myrhs)){
+        a=1.0;
+      }else
+      {
+        a=2.0;
+      }
       rhs[i] += dualVol * rhoNP1* dampCoeff * (dampVel[i]-vel[i]);
       myrhs = dualVol * rhoNP1* dampCoeff * (dampVel[i]-vel[i]);
       if (std::isfinite(myrhs)){
