@@ -32,6 +32,8 @@ CoriolisSrc::CoriolisSrc(const SolutionOptions &solnOpts)
   // extract user parameters from solution options
   earthAngularVelocity_ = solnOpts.earthAngularVelocity_;
   latitude_ = solnOpts.latitude_ * pi_ / 180.0;
+  ug_ = solnOpts.ug_;
+  vg_ = solnOpts.vg_;
 
   nDim_ = 3;
   eastVector_ = solnOpts.eastVector_;
