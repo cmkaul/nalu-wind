@@ -158,6 +158,8 @@ public:
   double eigenvaluePerturbTurbKe_;
   double earthAngularVelocity_;
   double latitude_;
+  double ug_;
+  double vg_;
   double raBoussinesqTimeScale_;
 
   // mdot post processing

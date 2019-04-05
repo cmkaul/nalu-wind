@@ -88,6 +88,8 @@ SolutionOptions::SolutionOptions()
     eigenvaluePerturbTurbKe_(0.0),
     earthAngularVelocity_(7.2921159e-5),
     latitude_(0.0),
+    ug_(0.0),
+    vg_(0.0),
     raBoussinesqTimeScale_(-1.0),
     mdotAlgAccumulation_(0.0),
     mdotAlgInflow_(0.0),
@@ -327,6 +329,8 @@ SolutionOptions::load(const YAML::Node & y_node)
           get_if_present(y_user_constants, "stefan_boltzmann",  stefanBoltzmann_, stefanBoltzmann_);
           get_if_present(y_user_constants, "earth_angular_velocity", earthAngularVelocity_, earthAngularVelocity_);
           get_if_present(y_user_constants, "latitude", latitude_, latitude_);
+          get_if_present(y_user_constants, "ug", ug_, ug_)
+          get_if_present(y_user_constants, "vg", vg_, vg_)
           get_if_present(y_user_constants, "boussinesq_time_scale", raBoussinesqTimeScale_, raBoussinesqTimeScale_);
 
           if (expect_sequence( y_user_constants, "gravity", optional) ) {

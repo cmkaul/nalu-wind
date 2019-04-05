@@ -76,9 +76,10 @@ MomentumCoriolisSrcNodeSuppAlg::node_execute(
   const double uu = cor_.upVector_[0]*uNp1[0] + cor_.upVector_[1]*uNp1[1] + cor_.upVector_[2]*uNp1[2];
 
   // calculate acceleration in east-north-up coordinates
-  const double ae = cor_.corfac_ * (un*cor_.sinphi_ - uu*cor_.cosphi_);
-  const double an = -cor_.corfac_*ue*cor_.sinphi_;
-  const double au = cor_.corfac_*ue*cor_.cosphi_;
+  // CK Colleen converting to fplane approximation
+  const double ae = -cor_.corfac_ * cor_.sinphi_* (cor_.vg_- un);//- uu*cor_.cosphi_);
+  const double an = cor_.corfac_*cor_.sinphi_ * (cor_.ug - ue);
+  const double au = 0.0 ;//cor_.corfac_*ue*cor_.cosphi_;
   
   // calculate acceleration in model x-y-z coordinates
   const double ax = ae*cor_.eastVector_[0] + an*cor_.northVector_[0] + au*cor_.upVector_[0];

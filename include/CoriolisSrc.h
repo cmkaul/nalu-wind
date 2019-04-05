@@ -25,6 +25,8 @@ public:
   int nDim_;
   double earthAngularVelocity_;
   double latitude_;
+  double ug_;
+  double vg_;
   double sinphi_;
   double cosphi_;
   double corfac_;
