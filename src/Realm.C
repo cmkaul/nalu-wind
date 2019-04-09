@@ -2026,6 +2026,9 @@ Realm::advance_time_step()
       NaluEnv::self().naluOutputP0() << "norm convergence criteria met for all equation systems: " << std::endl;
       NaluEnv::self().naluOutputP0() << "max scaled norm is: " << equationSystems_.provide_system_norm() << std::endl;
       break;
+    }else {
+      NaluEnv::self().naluOutputP0() << "norm convergence criteriai NOT met for all equation systems: " << std::endl;
+      NaluEnv::self().naluOutputP0() << "max scaled norm is: " << equationSystems_.provide_system_norm() << std::endl;
     }
   }
 
