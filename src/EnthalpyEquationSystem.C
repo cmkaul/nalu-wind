@@ -1224,6 +1224,12 @@ EnthalpyEquationSystem::solve_and_update()
 
     // projected nodal gradient
     compute_projected_nodal_gradient();
+
+    //CK--working on this
+    if ( system_is_converged() ) {
+      NaluEnv::self().naluOutputP0() << "norm convergence criteria met for Enthalpy equation system. " << std::endl;
+      break;
+    }
   }
 
   // delay extract temperature and h and Too to the end of the iteration over all equations

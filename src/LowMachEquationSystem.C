@@ -762,6 +762,12 @@ LowMachEquationSystem::solve_and_update()
     timeB = NaluEnv::self().nalu_time();
     momentumEqSys_->timerMisc_ += (timeB-timeA);
 
+        //CK--working on this
+    if ( system_is_converged() ) {
+      NaluEnv::self().naluOutputP0() << "norm convergence criteria met for LowMach equation system. " << std::endl;
+      break;
+    }
+
   }
 
   // process CFL/Reynolds

@@ -782,7 +782,6 @@ EquationSystems::solve_and_update()
     const bool systemConverged = (*ii)->system_is_converged();
     if ( !systemConverged )
       overallConvergence = false;
-      NaluEnv::self().naluOutputP0() << "NaluMemory::EquationSystem::overallConvergence is false" << std::endl;
   }
   
   return overallConvergence;
