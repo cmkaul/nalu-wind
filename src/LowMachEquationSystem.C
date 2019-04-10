@@ -763,7 +763,7 @@ LowMachEquationSystem::solve_and_update()
     momentumEqSys_->timerMisc_ += (timeB-timeA);
 
         //CK--working on this
-    if ( system_is_converged() ) {
+    if ( momentumEqSys_->system_is_converged() && continuityEqSys_->system_is_converged()) {
       NaluEnv::self().naluOutputP0() << "norm convergence criteria met for LowMach equation system. " << std::endl;
       break;
     }
