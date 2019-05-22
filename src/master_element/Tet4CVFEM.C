@@ -33,6 +33,7 @@ namespace nalu{
 
 //-------- tet_deriv -------------------------------------------------------
 template <typename DerivType>
+KOKKOS_FUNCTION
 void tet_deriv(DerivType& deriv)
 {
   for(size_t j=0; j<deriv.extent(0); ++j) {
@@ -64,9 +65,6 @@ TetSCV::TetSCV()
   MasterElement::nDim_ = nDim_;
   MasterElement::nodesPerElement_ = nodesPerElement_;
   MasterElement::numIntPoints_ = numIntPoints_;
-
-  MasterElement::intgLoc_.assign(&intgLoc_[0][0],           12+&intgLoc_[0][0]);
-  MasterElement::intgLocShift_.assign(&intgLocShift_[0][0], 12+&intgLocShift_[0][0]);
 }
 
 //--------------------------------------------------------------------------
@@ -84,8 +82,8 @@ TetSCV::ipNodeMap(
 //-------- determinant -----------------------------------------------------
 //--------------------------------------------------------------------------
 void TetSCV::determinant(
-    SharedMemView<DoubleType**>& coordel,
-    SharedMemView<DoubleType*>& volume)
+    SharedMemView<DoubleType**, DeviceShmem>& coordel,
+    SharedMemView<DoubleType*, DeviceShmem>& volume)
 {
   const int tetSubcontrolNodeTable[4][8] = {
     {0, 4, 7, 6, 11, 13, 14, 12},
@@ -189,9 +187,9 @@ void TetSCV::determinant(
 //-------- grad_op ---------------------------------------------------------
 //--------------------------------------------------------------------------
 void TetSCV::grad_op(
-    SharedMemView<DoubleType**>&coords,
-    SharedMemView<DoubleType***>&gradop,
-    SharedMemView<DoubleType***>&deriv)
+    SharedMemView<DoubleType**, DeviceShmem>&coords,
+    SharedMemView<DoubleType***, DeviceShmem>&gradop,
+    SharedMemView<DoubleType***, DeviceShmem>&deriv)
 {
   tet_deriv(deriv);
   generic_grad_op<AlgTraitsTet4>(deriv, coords, gradop);
@@ -201,9 +199,9 @@ void TetSCV::grad_op(
 //-------- shifted_grad_op -------------------------------------------------
 //--------------------------------------------------------------------------
 void TetSCV::shifted_grad_op(
-    SharedMemView<DoubleType**>&coords,
-    SharedMemView<DoubleType***>&gradop,
-    SharedMemView<DoubleType***>&deriv)
+    SharedMemView<DoubleType**, DeviceShmem>&coords,
+    SharedMemView<DoubleType***, DeviceShmem>&gradop,
+    SharedMemView<DoubleType***, DeviceShmem>&deriv)
 {
   tet_deriv(deriv);
   generic_grad_op<AlgTraitsTet4>(deriv, coords, gradop);
@@ -217,14 +215,22 @@ void TetSCV::determinant(
 {
   int lerr = 0;
 
+  const int npe  = nodesPerElement_;
+  const int nint = numIntPoints_;
   SIERRA_FORTRAN(tet_scv_det)
-    ( &nelem, &nodesPerElement_, &numIntPoints_, coords,
+    ( &nelem, &npe, &nint, coords,
       volume, error, &lerr );
 }
 
 //--------------------------------------------------------------------------
 //-------- shape_fcn -------------------------------------------------------
 //--------------------------------------------------------------------------
+void
+TetSCV::shape_fcn(SharedMemView<DoubleType**, DeviceShmem> &shpfc)
+{
+  tet_shape_fcn(numIntPoints_, intgLoc_[0], shpfc);
+}
+
 void
 TetSCV::shape_fcn(double *shpfc)
 {
@@ -234,6 +240,12 @@ TetSCV::shape_fcn(double *shpfc)
 //--------------------------------------------------------------------------
 //-------- shifted_shape_fcn -----------------------------------------------
 //--------------------------------------------------------------------------
+void
+TetSCV::shifted_shape_fcn(SharedMemView<DoubleType**, DeviceShmem> &shpfc)
+{
+  tet_shape_fcn(numIntPoints_, intgLocShift_[0], shpfc);
+}
+
 void
 TetSCV::shifted_shape_fcn(double *shpfc)
 {
@@ -245,7 +257,25 @@ TetSCV::shifted_shape_fcn(double *shpfc)
 //--------------------------------------------------------------------------
 void
 TetSCV::tet_shape_fcn(
-  const int  &npts,
+  const int  npts,
+  const double *par_coord, 
+  SharedMemView<DoubleType**, DeviceShmem> &shpfc) const
+{
+  for (int j = 0; j < npts; ++j ) {
+    const int k = 3*j;
+    const double xi = par_coord[k];
+    const double eta = par_coord[k+1];
+    const double zeta = par_coord[k+2];
+    shpfc(j,0) = 1.0 - xi - eta - zeta;
+    shpfc(j,1) = xi;
+    shpfc(j,2) = eta;
+    shpfc(j,3) = zeta;
+  }
+}
+
+void
+TetSCV::tet_shape_fcn(
+  const int  npts,
   const double *par_coord, 
   double *shape_fcn)
 {
@@ -274,9 +304,9 @@ void TetSCV::Mij(
 }
 //-------------------------------------------------------------------------
 void TetSCV::Mij(
-    SharedMemView<DoubleType**>& coords,
-    SharedMemView<DoubleType***>& metric,
-    SharedMemView<DoubleType***>& deriv)
+    SharedMemView<DoubleType**, DeviceShmem>& coords,
+    SharedMemView<DoubleType***, DeviceShmem>& metric,
+    SharedMemView<DoubleType***, DeviceShmem>& deriv)
 {
   generic_Mij_3d<AlgTraitsTet4>(deriv, coords, metric);
 }
@@ -292,14 +322,6 @@ TetSCS::TetSCS()
   MasterElement::nodesPerElement_ = nodesPerElement_;
   MasterElement::numIntPoints_ = numIntPoints_;
 
-  MasterElement::scsIpEdgeOrd_.assign(scsIpEdgeOrd_,  numIntPoints_+scsIpEdgeOrd_);
-  MasterElement::oppFace_.assign(&oppFace_[0][0], 12+&oppFace_[0][0]);
-
-  MasterElement::intgLoc_.assign(intgLoc_,  18+intgLoc_);
-  MasterElement::intgLocShift_.assign(intgLocShift_,  18+intgLocShift_);
-
-  MasterElement::intgExpFace_.assign(&intgExpFace_[0][0][0], 36+&intgExpFace_[0][0][0]);
-
   const double nodeLocations[4][3] = {{0,0,0}, {1,0,0}, {0,1,0}, {0,0,1}};
 
   stk::topology topo = stk::topology::TET_4;
@@ -312,7 +334,6 @@ TetSCS::TetSCS()
       intgExpFaceShift_[k][n][2] = nodeLocations[ordinals[n]][2];
     }
   }
-  MasterElement::intgExpFaceShift_.assign(&intgExpFaceShift_[0][0][0], 36+&intgExpFaceShift_[0][0][0]);
 }
 
 //--------------------------------------------------------------------------
@@ -330,8 +351,7 @@ TetSCS::ipNodeMap(
 //-------- side_node_ordinals ----------------------------------------------
 //--------------------------------------------------------------------------
 const int *
-TetSCS::side_node_ordinals(
-  int ordinal)
+TetSCS::side_node_ordinals ( int ordinal) const
 {
   // define face_ordinal->node_ordinal mappings for each face (ordinal);
   return sideNodeOrdinals_[ordinal];
@@ -341,8 +361,8 @@ TetSCS::side_node_ordinals(
 //-------- determinant -----------------------------------------------------
 //--------------------------------------------------------------------------
 void TetSCS::determinant(
-    SharedMemView<DoubleType**>& coordel,
-    SharedMemView<DoubleType**>&areav)
+    SharedMemView<DoubleType**, DeviceShmem>& coordel,
+    SharedMemView<DoubleType**, DeviceShmem>&areav)
 {
   int tetEdgeFacetTable[6][4] = {
     {4, 7, 14, 13},
@@ -450,8 +470,10 @@ void TetSCS::determinant(
   double *areav,
   double *error)
 {
+  const int npe  = nodesPerElement_;
+  const int nint = numIntPoints_;
   SIERRA_FORTRAN(tet_scs_det)
-    ( &nelem, &nodesPerElement_, &numIntPoints_, coords, areav );
+    ( &nelem, &npe, &nint, coords, areav );
 
   // all is always well; no error checking
   *error = 0;
@@ -461,9 +483,9 @@ void TetSCS::determinant(
 //-------- grad_op ---------------------------------------------------------
 //--------------------------------------------------------------------------
 void TetSCS::grad_op(
-    SharedMemView<DoubleType**>&coords,
-    SharedMemView<DoubleType***>&gradop,
-    SharedMemView<DoubleType***>&deriv)
+    SharedMemView<DoubleType**, DeviceShmem>&coords,
+    SharedMemView<DoubleType***, DeviceShmem>&gradop,
+    SharedMemView<DoubleType***, DeviceShmem>&deriv)
 {
   tet_deriv(deriv);
 
@@ -480,13 +502,15 @@ void TetSCS::grad_op(
 {
   int lerr = 0;
 
+  const int npe  = nodesPerElement_;
+  const int nint = numIntPoints_;
   SIERRA_FORTRAN(tet_derivative)
-    ( &numIntPoints_, deriv );
+    ( &nint, deriv );
   
   SIERRA_FORTRAN(tet_gradient_operator)
     ( &nelem,
-      &nodesPerElement_,
-      &numIntPoints_,
+      &npe,
+      &nint,
       deriv,
       coords, gradop, det_j, error, &lerr );
 
@@ -498,9 +522,9 @@ void TetSCS::grad_op(
 //-------- shifted_grad_op -------------------------------------------------
 //--------------------------------------------------------------------------
 void TetSCS::shifted_grad_op(
-    SharedMemView<DoubleType**>&coords,
-    SharedMemView<DoubleType***>&gradop,
-    SharedMemView<DoubleType***>&deriv)
+    SharedMemView<DoubleType**, DeviceShmem>&coords,
+    SharedMemView<DoubleType***, DeviceShmem>&gradop,
+    SharedMemView<DoubleType***, DeviceShmem>&deriv)
 {
   tet_deriv(deriv);
 
@@ -517,13 +541,15 @@ void TetSCS::shifted_grad_op(
 {
   int lerr = 0;
 
+  const int npe  = nodesPerElement_;
+  const int nint = numIntPoints_;
   SIERRA_FORTRAN(tet_derivative)
-    ( &numIntPoints_, deriv );
+    ( &nint, deriv );
 
   SIERRA_FORTRAN(tet_gradient_operator)
     ( &nelem,
-      &nodesPerElement_,
-      &numIntPoints_,
+      &npe,
+      &nint,
       deriv,
       coords, gradop, det_j, error, &lerr );
 
@@ -556,9 +582,10 @@ void TetSCS::face_grad_op(
       SIERRA_FORTRAN(tet_derivative)
         ( &nface, dpsi );
 
+      const int npe  = nodesPerElement_;
       SIERRA_FORTRAN(tet_gradient_operator)
         ( &nface,
-          &nodesPerElement_,
+          &npe,
           &nface,
           dpsi,
           &coords[12*n], &gradop[k*nelem*12+n*12], &det_j[npf*n+k], error, &lerr );
@@ -572,8 +599,8 @@ void TetSCS::face_grad_op(
 
 void TetSCS::face_grad_op(
   int /*face_ordinal*/,
-  SharedMemView<DoubleType**>& coords,
-  SharedMemView<DoubleType***>& gradop)
+  SharedMemView<DoubleType**, DeviceShmem>& coords,
+  SharedMemView<DoubleType***, DeviceShmem>& gradop)
 {
   using traits = AlgTraitsTri3Tet4;
 
@@ -581,7 +608,7 @@ void TetSCS::face_grad_op(
   constexpr int derivSize = traits::numFaceIp_ *  traits::nodesPerElement_ * traits::nDim_;
 
   DoubleType wderiv[derivSize];
-  SharedMemView<DoubleType***> deriv(wderiv,traits::numFaceIp_, traits::nodesPerElement_,  traits::nDim_);
+  SharedMemView<DoubleType***, DeviceShmem> deriv(wderiv,traits::numFaceIp_, traits::nodesPerElement_,  traits::nDim_);
   tet_deriv(deriv);
 
   generic_grad_op<AlgTraitsTet4>(deriv, coords, gradop);
@@ -592,8 +619,8 @@ void TetSCS::face_grad_op(
 //--------------------------------------------------------------------------
 void TetSCS::shifted_face_grad_op(
   int face_ordinal,
-  SharedMemView<DoubleType**>& coords,
-  SharedMemView<DoubleType***>& gradop)
+  SharedMemView<DoubleType**, DeviceShmem>& coords,
+  SharedMemView<DoubleType***, DeviceShmem>& gradop)
 {
   // no difference for regular face_grad_op
   face_grad_op(face_ordinal, coords, gradop);
@@ -623,9 +650,10 @@ void TetSCS::shifted_face_grad_op(
       SIERRA_FORTRAN(tet_derivative)
         ( &nface, dpsi );
 
+      const int npe  = nodesPerElement_;
       SIERRA_FORTRAN(tet_gradient_operator)
         ( &nface,
-          &nodesPerElement_,
+          &npe,
           &nface,
           dpsi,
           &coords[12*n], &gradop[k*nelem*12+n*12], &det_j[npf*n+k], error, &lerr );
@@ -640,10 +668,10 @@ void TetSCS::shifted_face_grad_op(
 //-------- gij ------------------------------------------------------------
 //--------------------------------------------------------------------------
 void TetSCS::gij(
-    SharedMemView<DoubleType**>& coords,
-    SharedMemView<DoubleType***>& gupper,
-    SharedMemView<DoubleType***>& glower,
-    SharedMemView<DoubleType***>& deriv)
+    SharedMemView<DoubleType**, DeviceShmem>& coords,
+    SharedMemView<DoubleType***, DeviceShmem>& gupper,
+    SharedMemView<DoubleType***, DeviceShmem>& glower,
+    SharedMemView<DoubleType***, DeviceShmem>& deriv)
 {
   generic_gij_3d<AlgTraitsTet4>(deriv, coords, gupper, glower);
 }
@@ -654,9 +682,11 @@ void TetSCS::gij(
   double *glowerij,
   double *deriv)
 {
+  const int npe  = nodesPerElement_;
+  const int nint = numIntPoints_;
   SIERRA_FORTRAN(threed_gij)
-    ( &nodesPerElement_,
-      &numIntPoints_,
+    ( &npe,
+      &nint,
       deriv,
       coords, gupperij, glowerij);
 }
@@ -673,9 +703,9 @@ void TetSCS::Mij(
 }
 //-------------------------------------------------------------------------
 void TetSCS::Mij(
-    SharedMemView<DoubleType**>& coords,
-    SharedMemView<DoubleType***>& metric,
-    SharedMemView<DoubleType***>& deriv)
+    SharedMemView<DoubleType**, DeviceShmem>& coords,
+    SharedMemView<DoubleType***, DeviceShmem>& metric,
+    SharedMemView<DoubleType***, DeviceShmem>& deriv)
 {
   generic_Mij_3d<AlgTraitsTet4>(deriv, coords, metric);
 }
@@ -703,6 +733,12 @@ TetSCS::scsIpEdgeOrd()
 //-------- shape_fcn -------------------------------------------------------
 //--------------------------------------------------------------------------
 void
+TetSCS::shape_fcn(SharedMemView<DoubleType**, DeviceShmem> &shpfc)
+{
+  tet_shape_fcn(numIntPoints_, &intgLoc_[0], shpfc);
+}
+
+void
 TetSCS::shape_fcn(double *shpfc)
 {
   tet_shape_fcn(numIntPoints_, &intgLoc_[0], shpfc);
@@ -711,6 +747,12 @@ TetSCS::shape_fcn(double *shpfc)
 //--------------------------------------------------------------------------
 //-------- shifted_shape_fcn -----------------------------------------------
 //--------------------------------------------------------------------------
+void
+TetSCS::shifted_shape_fcn(SharedMemView<DoubleType**, DeviceShmem> &shpfc)
+{
+  tet_shape_fcn(numIntPoints_, &intgLocShift_[0], shpfc);
+}
+
 void
 TetSCS::shifted_shape_fcn(double *shpfc)
 {
@@ -722,7 +764,25 @@ TetSCS::shifted_shape_fcn(double *shpfc)
 //--------------------------------------------------------------------------
 void
 TetSCS::tet_shape_fcn(
-  const int  &npts,
+  const int  npts,
+  const double *par_coord, 
+  SharedMemView<DoubleType**, DeviceShmem> &shpfc) const
+{
+  for (int j = 0; j < npts; ++j ) {
+    const int k = 3*j;
+    const double xi = par_coord[k];
+    const double eta = par_coord[k+1];
+    const double zeta = par_coord[k+2];
+    shpfc(j,0) = 1.0 - xi - eta - zeta;
+    shpfc(j,1) = xi;
+    shpfc(j,2) = eta;
+    shpfc(j,3) = zeta;
+  }
+}
+
+void
+TetSCS::tet_shape_fcn(
+  const int  npts,
   const double *par_coord, 
   double *shape_fcn)
 {
@@ -888,9 +948,10 @@ TetSCS::general_face_grad_op(
   SIERRA_FORTRAN(tet_derivative)
     ( &nface, dpsi );
 
+  const int npe  = nodesPerElement_;
   SIERRA_FORTRAN(tet_gradient_operator)
     ( &nface,
-      &nodesPerElement_,
+      &npe,
       &nface,
       dpsi,
       &coords[0], &gradop[0], &det_j[0], error, &lerr );

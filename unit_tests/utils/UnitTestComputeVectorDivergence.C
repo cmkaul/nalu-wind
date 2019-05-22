@@ -35,11 +35,15 @@ TEST(utils, compute_vector_divergence)
   ScalarFieldType *duaNdlVol = &(realm.meta_data().declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "dual_nodal_volume"));
   stk::mesh::put_field_on_mesh(*duaNdlVol, realm.meta_data().universal_part(), nullptr);
 
+  ScalarFieldType& elemVol = realm.meta_data().declare_field<ScalarFieldType>(
+    stk::topology::ELEMENT_RANK, "element_volume");
+  stk::mesh::put_field_on_mesh(elemVol, realm.meta_data().universal_part(), nullptr);
+
   VectorFieldType *meshVec = &(realm.meta_data().declare_field<VectorFieldType>(stk::topology::NODE_RANK, "mesh_vector"));
   stk::mesh::put_field_on_mesh(*meshVec, realm.meta_data().universal_part(), nDim, nullptr);
 
   const sierra::nalu::MasterElement* meFC = sierra::nalu::MasterElementRepo::get_surface_master_element(stk::topology::QUAD_4);
-  const int numScsIp = meFC->numIntPoints_;
+  const int numScsIp = meFC->num_integration_points();
   GenericFieldType *exposedAreaVec = &(realm.meta_data().declare_field<GenericFieldType>(realm.meta_data().side_rank(), "exposed_area_vector"));
   stk::mesh::put_field_on_mesh(*exposedAreaVec, realm.meta_data().universal_part(), nDim*numScsIp , nullptr);
 

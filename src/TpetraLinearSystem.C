@@ -16,6 +16,7 @@
 #include <Simulation.h>
 #include <LinearSolver.h>
 #include <master_element/MasterElement.h>
+#include <master_element/MasterElementFactory.h>
 #include <EquationSystem.h>
 #include <NaluEnv.h>
 #include <utils/StkHelpers.h>
@@ -99,8 +100,10 @@ TpetraLinearSystem::TpetraLinearSystem(
 TpetraLinearSystem::~TpetraLinearSystem()
 {
   // dereference linear solver in safe manner
-  TpetraLinearSolver *linearSolver = reinterpret_cast<TpetraLinearSolver *>(linearSolver_);
-  linearSolver->destroyLinearSolver();
+  if (linearSolver_ != nullptr) {
+    TpetraLinearSolver *linearSolver = reinterpret_cast<TpetraLinearSolver *>(linearSolver_);
+    linearSolver->destroyLinearSolver();
+  }
 }
 
 struct CompareEntityEqualById
@@ -315,8 +318,8 @@ TpetraLinearSystem::beginLinearSystemConstruction()
   }
   
   const Teuchos::RCP<LinSys::Comm> tpetraComm = Teuchos::rcp(new LinSys::Comm(bulkData.parallel()));
-  ownedRowsMap_ = Teuchos::rcp(new LinSys::Map(Teuchos::OrdinalTraits<Tpetra::global_size_t>::invalid(), ownedGids, 1, tpetraComm, node_));
-  sharedNotOwnedRowsMap_ = Teuchos::rcp(new LinSys::Map(Teuchos::OrdinalTraits<Tpetra::global_size_t>::invalid(), sharedNotOwnedGids, 1, tpetraComm, node_));
+  ownedRowsMap_ = Teuchos::rcp(new LinSys::Map(Teuchos::OrdinalTraits<Tpetra::global_size_t>::invalid(), ownedGids, 1, tpetraComm));
+  sharedNotOwnedRowsMap_ = Teuchos::rcp(new LinSys::Map(Teuchos::OrdinalTraits<Tpetra::global_size_t>::invalid(), sharedNotOwnedGids, 1, tpetraComm));
 
   exporter_ = Teuchos::rcp(new LinSys::Export(sharedNotOwnedRowsMap_, ownedRowsMap_));
 
@@ -457,7 +460,7 @@ TpetraLinearSystem::buildReducedElemToNodeGraph(const stk::mesh::PartVector & pa
     // extract master element
     MasterElement *meSCS = sierra::nalu::MasterElementRepo::get_surface_master_element(b.topology());
     // extract master element specifics
-    const int numScsIp = meSCS->numIntPoints_;
+    const int numScsIp = meSCS->num_integration_points();
     const int *lrscv = meSCS->adjacentNodes();
 
     const stk::mesh::Bucket::size_type length   = b.size();
@@ -805,8 +808,8 @@ TpetraLinearSystem::compute_graph_row_lengths(const std::vector<stk::mesh::Entit
                                               LinSys::RowLengths& locallyOwnedRowLengths,
                                               stk::CommNeighbors& commNeighbors)
 {
-  Kokkos::View<size_t*,MemSpace> deviceSharedNotOwnedRowLengths = sharedNotOwnedRowLengths.view<MemSpace>();
-  Kokkos::View<size_t*,MemSpace> deviceLocallyOwnedRowLengths = locallyOwnedRowLengths.view<MemSpace>();
+  auto deviceSharedNotOwnedRowLengths = sharedNotOwnedRowLengths.view<DeviceSpace>();
+  auto deviceLocallyOwnedRowLengths = locallyOwnedRowLengths.view<DeviceSpace>();
 
   const stk::mesh::BulkData& bulk = realm_.bulk_data();
 
@@ -1132,7 +1135,7 @@ void verify_same_except_sort_order(const std::vector<GlobalOrdinal>& vec1, const
 }
 
 void verify_row_lengths(const LinSys::Graph& graph,
-                        const Kokkos::View<size_t*,MemSpace>& rowLengths, int localProc)
+                        const Kokkos::View<size_t*,DeviceSpace>& rowLengths, int localProc)
 {
   ThrowRequireMsg(graph.getNodeNumRows() == rowLengths.size(),
                   "Error, graph.getNodeNumRows="<<graph.getNodeNumRows()<<" must equal "
@@ -1200,7 +1203,7 @@ void remove_invalid_indices(LocalGraphArrays& csg, ViewType& rowLengths)
   }
 
   if (newNnz < nnz) {
-    Kokkos::View<LocalOrdinal*,MemSpace> newColIndices(Kokkos::ViewAllocateWithoutInitializing("colInds"),newNnz);
+    Kokkos::View<LocalOrdinal*,DeviceSpace> newColIndices(Kokkos::ViewAllocateWithoutInitializing("colInds"),newNnz);
     LocalOrdinal* newCols = newColIndices.data();
     auto rowLens = rowLengths.data();
     int index = 0;
@@ -1259,8 +1262,8 @@ TpetraLinearSystem::finalizeLinearSystem()
   size_t numLocallyOwned = ownedRowsMap_->getMyGlobalIndices().extent(0);
   LinSys::RowLengths sharedNotOwnedRowLengths("rowLengths", numSharedNotOwned);
   LinSys::RowLengths locallyOwnedRowLengths("rowLengths", numLocallyOwned);
-  auto ownedRowLengths = locallyOwnedRowLengths.view<MemSpace>();
-  auto globalRowLengths = sharedNotOwnedRowLengths.view<MemSpace>();
+  auto ownedRowLengths = locallyOwnedRowLengths.view<DeviceSpace>();
+  auto globalRowLengths = sharedNotOwnedRowLengths.view<DeviceSpace>();
 
   std::vector<int> neighborProcs;
   fill_neighbor_procs(neighborProcs, bulkData, realm_);
@@ -1285,7 +1288,7 @@ TpetraLinearSystem::finalizeLinearSystem()
   fill_owned_and_shared_then_nonowned_ordered_by_proc(optColGids, sourcePIDs, localProc, ownedRowsMap_, sharedNotOwnedRowsMap_, ownersAndGids_, sharedPids_);
 
   const Teuchos::RCP<LinSys::Comm> tpetraComm = Teuchos::rcp(new LinSys::Comm(bulkData.parallel()));
-  totalColsMap_ = Teuchos::rcp(new LinSys::Map(Teuchos::OrdinalTraits<Tpetra::global_size_t>::invalid(), optColGids, 1, tpetraComm, node_));
+  totalColsMap_ = Teuchos::rcp(new LinSys::Map(Teuchos::OrdinalTraits<Tpetra::global_size_t>::invalid(), optColGids, 1, tpetraComm));
 
   fill_entity_to_col_LID_mapping();
 
@@ -1324,8 +1327,8 @@ TpetraLinearSystem::finalizeLinearSystem()
   ownedRhs_ = Teuchos::rcp(new LinSys::Vector(ownedRowsMap_));
   sharedNotOwnedRhs_ = Teuchos::rcp(new LinSys::Vector(sharedNotOwnedRowsMap_));
 
-  ownedLocalRhs_ = ownedRhs_->getLocalView<sierra::nalu::MemSpace>();
-  sharedNotOwnedLocalRhs_ = sharedNotOwnedRhs_->getLocalView<sierra::nalu::MemSpace>();
+  ownedLocalRhs_ = ownedRhs_->getLocalView<sierra::nalu::DeviceSpace>();
+  sharedNotOwnedLocalRhs_ = sharedNotOwnedRhs_->getLocalView<sierra::nalu::DeviceSpace>();
 
   sln_ = Teuchos::rcp(new LinSys::Vector(ownedRowsMap_));
 
@@ -1516,10 +1519,10 @@ void
 TpetraLinearSystem::sumInto(
   unsigned numEntities,
   const ngp::Mesh::ConnectedNodes& entities,
-  const SharedMemView<const double*> & rhs,
-  const SharedMemView<const double**> & lhs,
-  const SharedMemView<int*> & localIds,
-  const SharedMemView<int*> & sortPermutation,
+  const SharedMemView<const double*,DeviceShmem> & rhs,
+  const SharedMemView<const double**,DeviceShmem> & lhs,
+  const SharedMemView<int*,DeviceShmem> & localIds,
+  const SharedMemView<int*,DeviceShmem> & sortPermutation,
   const char *  /* trace_tag */)
 {
   constexpr bool forceAtomic = !std::is_same<sierra::nalu::DeviceSpace, Kokkos::Serial>::value;

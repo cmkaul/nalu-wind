@@ -3,7 +3,6 @@ add_sources(GlobalHeaderList
    ABLDampingAlgorithm.h
    ABLProfileFunction.h
    Actuator.h
-   ActuatorLinePointDrag.h
    AlgTraits.h
    Algorithm.h
    AlgorithmDriver.h

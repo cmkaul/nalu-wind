@@ -637,8 +637,6 @@ Hex27SCV::set_interior_info()
       }
     }
   }
-  MasterElement::intgLocShift_.assign(intgLocShift_, numIntPoints_*nDim_+intgLocShift_);
-  MasterElement::intgLoc_.assign(intgLoc_, numIntPoints_*nDim_+intgLocShift_);
 }
 
 //--------------------------------------------------------------------------
@@ -653,7 +651,7 @@ Hex27SCV::ipNodeMap(
 }
 
 //--------------------------------------------------------------------------
-void Hex27SCV::shape_fcn(SharedMemView<DoubleType**> &shpfc)
+void Hex27SCV::shape_fcn(SharedMemView<DoubleType**, DeviceShmem> &shpfc)
 {
   for (int ip = 0; ip < AlgTraits::numScvIp_; ++ip) {
     for (int n = 0; n < AlgTraits::nodesPerElement_; ++n) {
@@ -662,7 +660,7 @@ void Hex27SCV::shape_fcn(SharedMemView<DoubleType**> &shpfc)
   }
 }
 //--------------------------------------------------------------------------
-void Hex27SCV::shifted_shape_fcn(SharedMemView<DoubleType**> &shpfc)
+void Hex27SCV::shifted_shape_fcn(SharedMemView<DoubleType**, DeviceShmem> &shpfc)
 {
   for (int ip = 0; ip < AlgTraits::numScvIp_; ++ip) {
     for (int n = 0; n < AlgTraits::nodesPerElement_; ++n) {
@@ -695,16 +693,16 @@ void Hex27SCV::determinant(
   }
 }
 //--------------------------------------------------------------------------
-void Hex27SCV::determinant(SharedMemView<DoubleType**>& coords, SharedMemView<DoubleType*>& volume)
+void Hex27SCV::determinant(SharedMemView<DoubleType**, DeviceShmem>& coords, SharedMemView<DoubleType*, DeviceShmem>& volume)
 {
   weighted_volumes(referenceGradWeights_, coords, volume);
 }
 
 //--------------------------------------------------------------------------
 void Hex27SCV::grad_op(
-  SharedMemView<DoubleType**>&coords,
-  SharedMemView<DoubleType***>&gradop,
-  SharedMemView<DoubleType***>&deriv)
+  SharedMemView<DoubleType**, DeviceShmem>&coords,
+  SharedMemView<DoubleType***, DeviceShmem>&gradop,
+  SharedMemView<DoubleType***, DeviceShmem>&deriv)
 {
   generic_grad_op<AlgTraits>(referenceGradWeights_, coords, gradop);
 
@@ -720,9 +718,9 @@ void Hex27SCV::grad_op(
 
 //--------------------------------------------------------------------------
 void Hex27SCV::shifted_grad_op(
-  SharedMemView<DoubleType**>&coords,
-  SharedMemView<DoubleType***>&gradop,
-  SharedMemView<DoubleType***>&deriv)
+  SharedMemView<DoubleType**, DeviceShmem>&coords,
+  SharedMemView<DoubleType***, DeviceShmem>&gradop,
+  SharedMemView<DoubleType***, DeviceShmem>&deriv)
 {
   generic_grad_op<AlgTraits>(shiftedReferenceGradWeights_, coords, gradop);
 
@@ -790,9 +788,9 @@ void Hex27SCV::Mij(
 }
 //--------------------------------------------------------------------------
 void Hex27SCV::Mij(
-  SharedMemView<DoubleType**>& coords,
-  SharedMemView<DoubleType***>& metric,
-  SharedMemView<DoubleType***>&  /* deriv */)
+  SharedMemView<DoubleType**, DeviceShmem>& coords,
+  SharedMemView<DoubleType***, DeviceShmem>& metric,
+  SharedMemView<DoubleType***, DeviceShmem>&  /* deriv */)
 {
   generic_Mij_3d<AlgTraits>(referenceGradWeights_, coords, metric);
 }
@@ -970,8 +968,6 @@ Hex27SCS::set_interior_info()
       }
     }
   }
-  MasterElement::intgLocShift_.assign(intgLocShift_, numIntPoints_*nDim_+intgLocShift_);
-  MasterElement::intgLoc_.assign(intgLoc_, numIntPoints_*nDim_+intgLocShift_);
 }
 
 //--------------------------------------------------------------------------
@@ -1185,8 +1181,6 @@ Hex27SCS::set_boundary_info()
       }
     }
   }
-  MasterElement::intgExpFace_.assign(intgExpFace_, numFaceIps_*nDim_+intgExpFace_);
-  MasterElement::oppFace_.assign(oppFace_, numFaceIps_+oppFace_);
 }
 
 //--------------------------------------------------------------------------
@@ -1214,8 +1208,7 @@ Hex27SCS::ipNodeMap(
 //-------- side_node_ordinals ----------------------------------------------
 //--------------------------------------------------------------------------
 const int *
-Hex27SCS::side_node_ordinals(
-  int ordinal)
+Hex27SCS::side_node_ordinals ( int ordinal) const
 {
   // define face_ordinal->node_ordinal mappings for each face (ordinal);
   return sideNodeOrdinals_[ordinal];
@@ -1244,7 +1237,7 @@ Hex27SCS::opposingFace(
 }
 
 //--------------------------------------------------------------------------
-void Hex27SCS::shape_fcn(SharedMemView<DoubleType**> &shpfc)
+void Hex27SCS::shape_fcn(SharedMemView<DoubleType**, DeviceShmem> &shpfc)
 {
   for (int ip = 0; ip < AlgTraits::numScsIp_; ++ip) {
     for (int n = 0; n < AlgTraits::nodesPerElement_; ++n) {
@@ -1253,7 +1246,7 @@ void Hex27SCS::shape_fcn(SharedMemView<DoubleType**> &shpfc)
   }
 }
 //--------------------------------------------------------------------------
-void Hex27SCS::shifted_shape_fcn(SharedMemView<DoubleType**> &shpfc)
+void Hex27SCS::shifted_shape_fcn(SharedMemView<DoubleType**, DeviceShmem> &shpfc)
 {
   for (int ip = 0; ip < AlgTraits::numScsIp_; ++ip) {
     for (int n = 0; n < AlgTraits::nodesPerElement_; ++n) {
@@ -1313,7 +1306,7 @@ Hex27SCS::determinant(
   *error = 0; // no error checking available
 }
 //--------------------------------------------------------------------------
-void Hex27SCS::determinant(SharedMemView<DoubleType**>&coords,  SharedMemView<DoubleType**>&areav)
+void Hex27SCS::determinant(SharedMemView<DoubleType**, DeviceShmem>&coords,  SharedMemView<DoubleType**, DeviceShmem>&areav)
 {
   weighted_area_vectors(referenceGradWeights_, coords, areav);
 }
@@ -1396,9 +1389,9 @@ void Hex27SCS::grad_op(
 }
 //--------------------------------------------------------------------------
 void Hex27SCS::grad_op(
-  SharedMemView<DoubleType**>&coords,
-  SharedMemView<DoubleType***>&gradop,
-  SharedMemView<DoubleType***>&deriv)
+  SharedMemView<DoubleType**, DeviceShmem>&coords,
+  SharedMemView<DoubleType***, DeviceShmem>&gradop,
+  SharedMemView<DoubleType***, DeviceShmem>&deriv)
 {
   generic_grad_op<AlgTraits>(referenceGradWeights_, coords, gradop);
 
@@ -1445,9 +1438,9 @@ void Hex27SCS::shifted_grad_op(
 }
 //--------------------------------------------------------------------------
 void Hex27SCS::shifted_grad_op(
-  SharedMemView<DoubleType**>&coords,
-  SharedMemView<DoubleType***>&gradop,
-  SharedMemView<DoubleType***>&deriv)
+  SharedMemView<DoubleType**, DeviceShmem>&coords,
+  SharedMemView<DoubleType***, DeviceShmem>&gradop,
+  SharedMemView<DoubleType***, DeviceShmem>&deriv)
 {
   generic_grad_op<AlgTraits>(shiftedReferenceGradWeights_, coords, gradop);
 
@@ -1489,8 +1482,8 @@ void Hex27SCS::face_grad_op(
 
 void Hex27SCS::face_grad_op(
   int face_ordinal,
-  SharedMemView<DoubleType**>& coords,
-  SharedMemView<DoubleType***>& gradop)
+  SharedMemView<DoubleType**, DeviceShmem>& coords,
+  SharedMemView<DoubleType***, DeviceShmem>& gradop)
 {
   using traits = AlgTraitsQuad9Hex27;
   const int offset = traits::numFaceIp_ * face_ordinal;
@@ -1590,10 +1583,10 @@ void Hex27SCS::gij(
 }
 //--------------------------------------------------------------------------
 void Hex27SCS::gij(
-  SharedMemView<DoubleType**>& coords,
-  SharedMemView<DoubleType***>& gupper,
-  SharedMemView<DoubleType***>& glower,
-  SharedMemView<DoubleType***>& deriv)
+  SharedMemView<DoubleType**, DeviceShmem>& coords,
+  SharedMemView<DoubleType***, DeviceShmem>& gupper,
+  SharedMemView<DoubleType***, DeviceShmem>& glower,
+  SharedMemView<DoubleType***, DeviceShmem>& deriv)
 {
   generic_gij_3d<AlgTraits>(referenceGradWeights_, coords, gupper, glower);
 
@@ -1618,9 +1611,9 @@ void Hex27SCS::Mij(
 }
 //--------------------------------------------------------------------------
 void Hex27SCS::Mij(
-  SharedMemView<DoubleType**>& coords,
-  SharedMemView<DoubleType***>& metric,
-  SharedMemView<DoubleType***>&  /* deriv */)
+  SharedMemView<DoubleType**, DeviceShmem>& coords,
+  SharedMemView<DoubleType***, DeviceShmem>& metric,
+  SharedMemView<DoubleType***, DeviceShmem>&  /* deriv */)
 {
   generic_Mij_3d<AlgTraits>(referenceGradWeights_, coords, metric);
 }

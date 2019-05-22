@@ -17,7 +17,7 @@
 #include "SimdInterface.h"
 #include "KokkosInterface.h"
 
-#include <vector>
+#include <array>
 #include <cstdlib>
 #include <stdexcept>
 #include <string>
@@ -39,7 +39,7 @@ public:
   using MasterElement::shape_fcn;
   using MasterElement::shifted_shape_fcn;
 
-  virtual const int * ipNodeMap(int ordinal = 0) const final;
+  KOKKOS_FUNCTION virtual const int *  ipNodeMap(int ordinal = 0) const final;
 
   void determinant(
     const int nelem,
@@ -74,7 +74,13 @@ public:
     const double *coords,
     double *normal);
 
-  double parametric_distance(const std::vector<double> &x);
+  virtual const double* integration_locations() const final {
+    return intgLoc_;
+  }
+  virtual const double* integration_location_shift() const final {
+    return intgLocShift_;
+  }
+  double parametric_distance(const std::array<double,2> &x);
 
   const double elemThickness_;  
 

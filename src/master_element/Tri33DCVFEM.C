@@ -36,11 +36,6 @@ Tri3DSCS::Tri3DSCS()
   MasterElement::nDim_ = nDim_;
   MasterElement::nodesPerElement_ = nodesPerElement_;
   MasterElement::numIntPoints_ = numIntPoints_;
-
-  // standard integration location
-  MasterElement::intgLoc_.assign(intgLoc_, 6+intgLoc_);
-  // shifted
-  MasterElement::intgLocShift_.assign(intgLocShift_, 6+intgLocShift_);
 }
 
 //--------------------------------------------------------------------------
@@ -202,7 +197,7 @@ Tri3DSCS::isInElement(
 
   if (3 == npar_coord) par_coor[2] = zpnew/std::sqrt(Area2);
 
-  std::array<double,3> w = { par_coor[0], par_coor[1], zpnew/std::sqrt(Area2) };
+  std::array<double,3> w = {{par_coor[0], par_coor[1], zpnew/std::sqrt(Area2)}};
 
   par_coor[0] = w[1];
   par_coor[1] = 1.0-w[0]-w[1];

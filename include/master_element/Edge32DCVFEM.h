@@ -17,7 +17,6 @@
 #include "SimdInterface.h"
 #include "KokkosInterface.h"
 
-#include <vector>
 #include <cstdlib>
 #include <stdexcept>
 #include <string>
@@ -44,7 +43,7 @@ public:
   using MasterElement::shape_fcn;
   using MasterElement::shifted_shape_fcn;
 
-  virtual const int * ipNodeMap(int ordinal = 0) const final;
+  KOKKOS_FUNCTION virtual const int *  ipNodeMap(int ordinal = 0) const final;
 
   void determinant(
     const int nelem,
@@ -64,6 +63,12 @@ public:
     const double *field,
     double *result);
 
+  virtual const double* integration_locations() const final {
+    return intgLoc_;
+  }
+  virtual const double* integration_location_shift() const final {
+    return intgLocShift_;
+  }
 private:
   static constexpr int nDim_ = AlgTraits::nDim_;
   static constexpr int nodesPerElement_ = AlgTraits::nodesPerElement_;
@@ -82,11 +87,9 @@ private:
   int ipNodeMap_[numIntPoints_];
   double intgLoc_[numIntPoints_];
   double ipWeight_[numIntPoints_];
-  double gaussWeight_[numQuad_];
-  double gaussAbscissae_[numQuad_];
+  const double gaussWeight_[numQuad_] = { 0.5, 0.5 };
+  const double gaussAbscissae_[numQuad_]={-std::sqrt(3.0)/3.0, std::sqrt(3.0)/3.0 };
 
-
-  void set_quadrature_rule();
   double tensor_product_weight(const int s1Node, const int s1Ip) const;
   double gauss_point_location(const int nodeOrdinal, const int gaussPointOrdinal) const;
 

@@ -36,8 +36,56 @@
 namespace sierra{
 namespace nalu{
 
+template<typename ViewType>
+KOKKOS_FUNCTION void pyramid_shape_fcn(
+  const int npts,
+  const double* par_coord,
+  ViewType& shape_fcn)
+{
+  const double eps = std::numeric_limits<double>::epsilon();
+
+  for ( int j = 0; j < npts; ++j ) {
+    const int k     = 3*j;
+    const double r    = par_coord[k+0];
+    const double s    = par_coord[k+1];
+    const double t_tmp    = par_coord[k+2];
+
+    const double one_minus_t = 1.0 - t_tmp;
+    const double t = (std::fabs(one_minus_t) > eps) ? t_tmp : 1.0 + std::copysign(eps, one_minus_t);
+    const double quarter_inv_tm1 = 0.25 / (1.0 - t);
+
+    shape_fcn(j, 0) = (1.0 - r - t) * (1.0 - s - t) * quarter_inv_tm1;
+    shape_fcn(j, 1) = (1.0 + r - t) * (1.0 - s - t) * quarter_inv_tm1;
+    shape_fcn(j, 2) = (1.0 + r - t) * (1.0 + s - t) * quarter_inv_tm1;
+    shape_fcn(j, 3) = (1.0 - r - t) * (1.0 + s - t) * quarter_inv_tm1;
+    shape_fcn(j, 4) = t;
+  }
+}
+
+template<typename ViewType>
+KOKKOS_FUNCTION void pyramid_shifted_shape_fcn(
+  const int npts,
+  const double* par_coord,
+  ViewType& shape_fcn)
+{
+  const double one  = 1.0;
+  for ( int j = 0; j < npts; ++j ) {
+    const int k     = 3*j;
+    const double r    = par_coord[k+0];
+    const double s    = par_coord[k+1];
+    const double t    = par_coord[k+2];
+
+    shape_fcn(j, 0) = 0.25*(1.0-r)*(1.0-s)*(one-t);
+    shape_fcn(j, 1) = 0.25*(1.0+r)*(1.0-s)*(one-t);
+    shape_fcn(j, 2) = 0.25*(1.0+r)*(1.0+s)*(one-t);
+    shape_fcn(j, 3) = 0.25*(1.0-r)*(1.0+s)*(one-t);
+    shape_fcn(j, 4) = t;
+  }
+}
+
 //-------- pyr_deriv -------------------------------------------------------
 template <typename DerivType>
+KOKKOS_FUNCTION
 void pyr_deriv(const int npts,
   const double *intgLoc,
   DerivType& deriv)
@@ -86,6 +134,7 @@ void pyr_deriv(const int npts,
 
 //-------- shifted_pyr_deriv -------------------------------------------------------
 template <typename DerivType>
+KOKKOS_FUNCTION
 void shifted_pyr_deriv(const int npts,
   const double *intgLoc,
   DerivType& deriv)
@@ -131,9 +180,6 @@ PyrSCV::PyrSCV()
   MasterElement::nDim_ = nDim_;
   MasterElement::nodesPerElement_ = nodesPerElement_;
   MasterElement::numIntPoints_ = numIntPoints_; 
-
-  MasterElement::intgLoc_.assign(intgLoc_, intgLoc_+15);
-  MasterElement::intgLocShift_.assign(intgLocShift_, intgLocShift_+15);
 }
 
 //--------------------------------------------------------------------------
@@ -250,8 +296,8 @@ DoubleType octohedron_volume_by_triangle_facets(const DoubleType volcoords[10][3
 //-------- determinant -----------------------------------------------------
 //--------------------------------------------------------------------------
 void PyrSCV::determinant(
-    SharedMemView<DoubleType**>& cordel,
-    SharedMemView<DoubleType*>& vol)
+    SharedMemView<DoubleType**, DeviceShmem>& cordel,
+    SharedMemView<DoubleType*, DeviceShmem>& vol)
 {
   int npe = nodesPerElement_;
   int nscv = numIntPoints_;
@@ -388,9 +434,9 @@ void PyrSCV::determinant(
 //-------- grad_op ---------------------------------------------------------
 //--------------------------------------------------------------------------
 void PyrSCV::grad_op(
-    SharedMemView<DoubleType**>& coords,
-    SharedMemView<DoubleType***>& gradop,
-    SharedMemView<DoubleType***>& deriv)
+    SharedMemView<DoubleType**, DeviceShmem>& coords,
+    SharedMemView<DoubleType***, DeviceShmem>& gradop,
+    SharedMemView<DoubleType***, DeviceShmem>& deriv)
 {
   pyr_deriv(numIntPoints_, &intgLoc_[0], deriv);
   generic_grad_op<AlgTraitsPyr5>(deriv, coords, gradop);
@@ -400,9 +446,9 @@ void PyrSCV::grad_op(
 //-------- shifted_grad_op ---------------------------------------------------------
 //--------------------------------------------------------------------------
 void PyrSCV::shifted_grad_op(
-    SharedMemView<DoubleType**>& coords,
-    SharedMemView<DoubleType***>& gradop,
-    SharedMemView<DoubleType***>& deriv)
+    SharedMemView<DoubleType**, DeviceShmem>& coords,
+    SharedMemView<DoubleType***, DeviceShmem>& gradop,
+    SharedMemView<DoubleType***, DeviceShmem>& deriv)
 {
   shifted_pyr_deriv(numIntPoints_, &intgLocShift_[0], deriv);
   generic_grad_op<AlgTraitsPyr5>(deriv, coords, gradop);
@@ -417,11 +463,25 @@ void PyrSCV::determinant(
 
   int lerr = 0;
 
+  const int npe  = nodesPerElement_;
+  const int nint = numIntPoints_;
   SIERRA_FORTRAN(pyr_scv_det)
-    ( &nelem, &nodesPerElement_, &numIntPoints_, coords,
+    ( &nelem, &npe, &nint, coords,
       volume, error, &lerr );
 }
 
+KOKKOS_FUNCTION void
+PyrSCV::shape_fcn(SharedMemView<DoubleType**, DeviceShmem> &shpfc)
+{
+  pyramid_shape_fcn(numIntPoints_, &intgLoc_[0], shpfc);
+}
+
+KOKKOS_FUNCTION void
+PyrSCV::shifted_shape_fcn(
+  SharedMemView<DoubleType**, DeviceShmem> &shpfc)
+{
+  pyramid_shifted_shape_fcn(numIntPoints_, &intgLocShift_[0], shpfc);
+}
 
 //--------------------------------------------------------------------------
 //-------- shape_fcn -------------------------------------------------------
@@ -446,7 +506,7 @@ PyrSCV::shifted_shape_fcn(double *shpfc)
 //--------------------------------------------------------------------------
 void
 PyrSCV::pyr_shape_fcn(
-  const int  &npts,
+  const int  npts,
   const double *par_coord, 
   double *shape_fcn)
 {
@@ -477,7 +537,7 @@ PyrSCV::pyr_shape_fcn(
 //--------------------------------------------------------------------------
 void
 PyrSCV::shifted_pyr_shape_fcn(
-  const int  &npts,
+  const int  npts,
   const double *par_coord, 
   double *shape_fcn)
 {
@@ -509,9 +569,9 @@ void PyrSCS::Mij(
 }
 //-------------------------------------------------------------------------
 void PyrSCS::Mij(
-    SharedMemView<DoubleType**>& coords,
-    SharedMemView<DoubleType***>& metric,
-    SharedMemView<DoubleType***>& deriv)
+    SharedMemView<DoubleType**, DeviceShmem>& coords,
+    SharedMemView<DoubleType***, DeviceShmem>& metric,
+    SharedMemView<DoubleType***, DeviceShmem>& deriv)
 {
   generic_Mij_3d<AlgTraitsPyr5>(deriv, coords, metric);
 }
@@ -547,25 +607,15 @@ PyrSCS::PyrSCS()
   MasterElement::nDim_ = nDim_;
   MasterElement::nodesPerElement_ = nodesPerElement_;
   MasterElement::numIntPoints_ = numIntPoints_;
-
-  MasterElement::scsIpEdgeOrd_.assign(scsIpEdgeOrd_, scsIpEdgeOrd_+AlgTraits::numScsIp_);
-  MasterElement::oppFace_.assign(oppFace_, oppFace_+20);
-
-  MasterElement::intgLoc_.assign(intgLoc_, intgLoc_+36);
-  MasterElement::intgLocShift_.assign(intgLocShift_, intgLocShift_+36);
-
-  MasterElement::intgExpFace_.assign(intgExpFace_, intgExpFace_+48);
-
   fill_intg_exp_face_shift(intgExpFaceShift_, sideNodeOrdinals_);
-  MasterElement::intgExpFaceShift_.assign(intgExpFaceShift_,intgExpFaceShift_+48);
 }
 
 //--------------------------------------------------------------------------
 //-------- side_node_ordinals ----------------------------------------------
 //--------------------------------------------------------------------------
 const int *
-PyrSCS::side_node_ordinals(
-  int ordinal)
+PyrSCS::side_node_ordinals (
+  int ordinal) const
 {
   // define face_ordinal->node_ordinal mappings for each face (ordinal);
   return &sideNodeOrdinals_[ordinal*3];
@@ -575,8 +625,8 @@ PyrSCS::side_node_ordinals(
 //-------- determinant -----------------------------------------------------
 //--------------------------------------------------------------------------
 void PyrSCS::determinant(
-    SharedMemView<DoubleType**>& cordel,
-    SharedMemView<DoubleType**>& areav)
+    SharedMemView<DoubleType**, DeviceShmem>& cordel,
+    SharedMemView<DoubleType**, DeviceShmem>& areav)
 {
   const int pyramidEdgeFacetTable[12][4] = {
     { 5,  9, 18, 12},  // sc face 1  -- points from 1 -> 2
@@ -709,8 +759,10 @@ void PyrSCS::determinant(
   double *areav,
   double *error)
 {
+  const int npe  = nodesPerElement_;
+  const int nint = numIntPoints_;
   SIERRA_FORTRAN(pyr_scs_det)
-    ( &nelem, &nodesPerElement_, &numIntPoints_, coords, areav );
+    ( &nelem, &npe, &nint, coords, areav );
 
   // all is always well; no error checking
   *error = 0;
@@ -720,9 +772,9 @@ void PyrSCS::determinant(
 //-------- grad_op ---------------------------------------------------------
 //--------------------------------------------------------------------------
 void PyrSCS::grad_op(
-    SharedMemView<DoubleType**>& coords,
-    SharedMemView<DoubleType***>& gradop,
-    SharedMemView<DoubleType***>& deriv)
+    SharedMemView<DoubleType**, DeviceShmem>& coords,
+    SharedMemView<DoubleType***, DeviceShmem>& gradop,
+    SharedMemView<DoubleType***, DeviceShmem>& deriv)
 {
   pyr_deriv(numIntPoints_, &intgLoc_[0], deriv);
   generic_grad_op<AlgTraitsPyr5>(deriv, coords, gradop);
@@ -740,10 +792,12 @@ void PyrSCS::grad_op(
 
   pyr_derivative(numIntPoints_, &intgLoc_[0], deriv);
   
+  const int npe  = nodesPerElement_;
+  const int nint = numIntPoints_;
   SIERRA_FORTRAN(pyr_gradient_operator)
     ( &nelem,
-      &nodesPerElement_,
-      &numIntPoints_,
+      &npe,
+      &nint,
       deriv,
       coords, gradop, det_j, error, &lerr );
 
@@ -755,9 +809,9 @@ void PyrSCS::grad_op(
 //-------- shifted_grad_op -------------------------------------------------
 //--------------------------------------------------------------------------
 void PyrSCS::shifted_grad_op(
-    SharedMemView<DoubleType**>& coords,
-    SharedMemView<DoubleType***>& gradop,
-    SharedMemView<DoubleType***>& deriv)
+    SharedMemView<DoubleType**, DeviceShmem>& coords,
+    SharedMemView<DoubleType***, DeviceShmem>& gradop,
+    SharedMemView<DoubleType***, DeviceShmem>& deriv)
 {
   shifted_pyr_deriv(numIntPoints_, &intgLocShift_[0], deriv);
   generic_grad_op<AlgTraitsPyr5>(deriv, coords, gradop);
@@ -775,10 +829,12 @@ void PyrSCS::shifted_grad_op(
 
   shifted_pyr_derivative(numIntPoints_, &intgLocShift_[0], deriv);
 
+  const int npe  = nodesPerElement_;
+  const int nint = numIntPoints_;
   SIERRA_FORTRAN(pyr_gradient_operator)
     ( &nelem,
-      &nodesPerElement_,
-      &numIntPoints_,
+      &npe,
+      &nint,
       deriv,
       coords, gradop, det_j, error, &lerr );
 
@@ -812,9 +868,10 @@ void PyrSCS::face_grad_op(
       const int row = 9*face_ordinal + k*ndim;
       pyr_derivative(nface, &intgExpFace_[row], dpsi);
       
+      const int npe  = nodesPerElement_;
       SIERRA_FORTRAN(pyr_gradient_operator)
         ( &nface,
-          &nodesPerElement_,
+          &npe,
           &nface,
           dpsi,
           &coords[15*n], &gradop[k*nelem*15+n*15], &det_j[npf*n+k], error, &lerr );
@@ -830,8 +887,8 @@ void PyrSCS::face_grad_op(
 //--------------------------------------------------------------------------
 void PyrSCS::face_grad_op(
   int face_ordinal,
-  SharedMemView<DoubleType**>& coords,
-  SharedMemView<DoubleType***>& gradop)
+  SharedMemView<DoubleType**, DeviceShmem>& coords,
+  SharedMemView<DoubleType***, DeviceShmem>& gradop)
 {
   using tri_traits = AlgTraitsTri3Wed6;
   using quad_traits = AlgTraitsQuad4Wed6;
@@ -841,7 +898,7 @@ void PyrSCS::face_grad_op(
   NALU_ALIGNED DoubleType psi[maxDerivSize];
 
   const int numFaceIps = (face_ordinal == 4) ? quad_traits::numFaceIp_ : tri_traits::numFaceIp_;
-  SharedMemView<DoubleType***> deriv(psi, numFaceIps, AlgTraitsPyr5::nodesPerElement_, dim);
+  SharedMemView<DoubleType***, DeviceShmem> deriv(psi, numFaceIps, AlgTraitsPyr5::nodesPerElement_, dim);
 
   const int offset = tri_traits::numFaceIp_ * face_ordinal;
   pyr_deriv(numFaceIps, &intgExpFace_[dim * offset], deriv);
@@ -853,8 +910,8 @@ void PyrSCS::face_grad_op(
 //--------------------------------------------------------------------------
 void PyrSCS::shifted_face_grad_op(
   int face_ordinal,
-  SharedMemView<DoubleType**>& coords,
-  SharedMemView<DoubleType***>& gradop)
+  SharedMemView<DoubleType**, DeviceShmem>& coords,
+  SharedMemView<DoubleType***, DeviceShmem>& gradop)
 {
   using tri_traits = AlgTraitsTri3Wed6;
   using quad_traits = AlgTraitsQuad4Wed6;
@@ -864,7 +921,7 @@ void PyrSCS::shifted_face_grad_op(
   NALU_ALIGNED DoubleType psi[maxDerivSize];
 
   const int numFaceIps = (face_ordinal == 4) ? quad_traits::numFaceIp_ : tri_traits::numFaceIp_;
-  SharedMemView<DoubleType***> deriv(psi, numFaceIps, AlgTraitsPyr5::nodesPerElement_, dim);
+  SharedMemView<DoubleType***, DeviceShmem> deriv(psi, numFaceIps, AlgTraitsPyr5::nodesPerElement_, dim);
 
   const int offset = tri_traits::numFaceIp_ * face_ordinal;
   shifted_pyr_deriv(numFaceIps, &intgExpFaceShift_[dim * offset], deriv);
@@ -896,9 +953,10 @@ void PyrSCS::shifted_face_grad_op(
       const int row = 9*face_ordinal + k*ndim;
       shifted_pyr_derivative(nface, &p_intgExp[row], dpsi);
 
+      const int npe = nodesPerElement_;
       SIERRA_FORTRAN(pyr_gradient_operator)
         ( &nface,
-          &nodesPerElement_,
+          &npe,
           &nface,
           dpsi,
           &coords[15*n], &gradop[k*nelem*15+n*15], &det_j[npf*n+k], error, &lerr );
@@ -1041,9 +1099,10 @@ PyrSCS::general_face_grad_op(
 
   pyr_derivative(nface, &isoParCoord[0], dpsi);
       
+  const int npe = nodesPerElement_;
   SIERRA_FORTRAN(pyr_gradient_operator)
     ( &nface,
-      &nodesPerElement_,
+      &npe,
       &nface,
       dpsi,
       &coords[0], &gradop[0], &det_j[0], error, &lerr );
@@ -1148,10 +1207,10 @@ void PyrSCS::shifted_pyr_derivative(
 //-------- gij -------------------------------------------------------------
 //--------------------------------------------------------------------------
 void PyrSCS::gij( 
-    SharedMemView<DoubleType**>& coords,
-    SharedMemView<DoubleType***>& gupper,
-    SharedMemView<DoubleType***>& glower,
-    SharedMemView<DoubleType***>& deriv)
+    SharedMemView<DoubleType**, DeviceShmem>& coords,
+    SharedMemView<DoubleType***, DeviceShmem>& gupper,
+    SharedMemView<DoubleType***, DeviceShmem>& glower,
+    SharedMemView<DoubleType***, DeviceShmem>& deriv)
 {
   generic_gij_3d<AlgTraitsPyr5>(deriv, coords, gupper, glower);
 }
@@ -1162,9 +1221,11 @@ void PyrSCS::gij(
   double *glowerij,
   double *deriv)
 {
+  const int npe  = nodesPerElement_;
+  const int nint = numIntPoints_;
   SIERRA_FORTRAN(threed_gij)
-    ( &nodesPerElement_,
-      &numIntPoints_,
+    ( &npe,
+      &nint,
       deriv,
       coords, gupperij, glowerij);
 }
@@ -1181,9 +1242,9 @@ void PyrSCV::Mij(
 }
 //-------------------------------------------------------------------------
 void PyrSCV::Mij(
-    SharedMemView<DoubleType**>& coords,
-    SharedMemView<DoubleType***>& metric,
-    SharedMemView<DoubleType***>& deriv)
+    SharedMemView<DoubleType**, DeviceShmem>& coords,
+    SharedMemView<DoubleType***, DeviceShmem>& metric,
+    SharedMemView<DoubleType***, DeviceShmem>& deriv)
 {
   generic_Mij_3d<AlgTraitsPyr5>(deriv, coords, metric);
 }
@@ -1205,6 +1266,19 @@ const int *
 PyrSCS::scsIpEdgeOrd()
 {
   return &scsIpEdgeOrd_[0];
+}
+
+KOKKOS_FUNCTION void
+PyrSCS::shape_fcn(SharedMemView<DoubleType**, DeviceShmem> &shpfc)
+{
+  pyramid_shape_fcn(numIntPoints_, &intgLoc_[0], shpfc);
+}
+
+KOKKOS_FUNCTION void
+PyrSCS::shifted_shape_fcn(
+  SharedMemView<DoubleType**, DeviceShmem> &shpfc)
+{
+  pyramid_shifted_shape_fcn(numIntPoints_, &intgLocShift_[0], shpfc);
 }
 
 //--------------------------------------------------------------------------
@@ -1230,7 +1304,7 @@ PyrSCS::shifted_shape_fcn(double *shpfc)
 //--------------------------------------------------------------------------
 void
 PyrSCS::pyr_shape_fcn(
-  const int  &npts,
+  const int  npts,
   const double *par_coord, 
   double *shape_fcn)
 {
@@ -1261,7 +1335,7 @@ PyrSCS::pyr_shape_fcn(
 //--------------------------------------------------------------------------
 void
 PyrSCS::shifted_pyr_shape_fcn(
-  const int  &npts,
+  const int  npts,
   const double *par_coord, 
   double *shape_fcn)
 {

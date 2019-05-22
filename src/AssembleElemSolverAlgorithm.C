@@ -51,14 +51,12 @@ AssembleElemSolverAlgorithm::AssembleElemSolverAlgorithm(
   stk::mesh::Part *part,
   EquationSystem *eqSystem,
   stk::mesh::EntityRank entityRank,
-  unsigned nodesPerEntity,
-  bool interleaveMEViews)
+  unsigned nodesPerEntity)
   : SolverAlgorithm(realm, part, eqSystem),
     dataNeededByKernels_(realm.meta_data()),
     entityRank_(entityRank),
     nodesPerEntity_(nodesPerEntity),
-    rhsSize_(nodesPerEntity*eqSystem->linsys_->numDof()),
-    interleaveMEViews_(interleaveMEViews)
+    rhsSize_(nodesPerEntity*eqSystem->linsys_->numDof())
 {
   if (eqSystem->dofName_ != "pressure") {
     diagRelaxFactor_ = realm.solutionOptions_->get_relaxation_factor(
@@ -100,19 +98,24 @@ AssembleElemSolverAlgorithm::execute()
     Kokkos::deep_copy(ngpKernels, hostKernelView);
   }
 
+
+#ifdef KOKKOS_ENABLE_CUDA
+  CoeffApplier* coeffApplier = eqSystem_->linsys_->get_coeff_applier();
+  CoeffApplier* deviceCoeffApplier = coeffApplier->device_pointer();
+
+  double diagRelaxFactor = diagRelaxFactor_;
+  int rhsSize = rhsSize_;
+  unsigned nodesPerEntity = nodesPerEntity_;
+#endif
+
   run_algorithm(
     realm_.bulk_data(),
     KOKKOS_LAMBDA(SharedMemData<DeviceTeamHandleType, DeviceShmem> & smdata) {
       set_zero(smdata.simdrhs.data(), smdata.simdrhs.size());
       set_zero(smdata.simdlhs.data(), smdata.simdlhs.size());
-
       for (size_t i=0; i < numKernels; i++) {
         Kernel* kernel = ngpKernels(i);
-#ifdef KOKKOS_ENABLE_CUDA
-        kernel->execute(smdata.simdlhs, smdata.simdrhs, *smdata.prereqData[0]);
-#else
         kernel->execute(smdata.simdlhs, smdata.simdrhs, smdata.simdPrereqData);
-#endif
       }
 
 #ifndef KOKKOS_ENABLE_CUDA
@@ -124,8 +127,20 @@ AssembleElemSolverAlgorithm::execute()
         apply_coeff(nodesPerEntity_, smdata.ngpElemNodes[simdElemIndex],
                     smdata.scratchIds, smdata.sortPermutation, smdata.rhs, smdata.lhs, __FILE__);
       }
+#else
+      extract_vector_lane(smdata.simdrhs, 0, smdata.rhs);
+      extract_vector_lane(smdata.simdlhs, 0, smdata.lhs);
+        for (int ir=0; ir < rhsSize; ++ir)
+          smdata.lhs(ir, ir) /= diagRelaxFactor;
+        (*deviceCoeffApplier)(nodesPerEntity, smdata.ngpElemNodes[0],
+                    smdata.scratchIds, smdata.sortPermutation, smdata.rhs, smdata.lhs, __FILE__);
 #endif
     });
+
+#ifdef KOKKOS_ENABLE_CUDA
+  coeffApplier->free_device_pointer();
+  delete coeffApplier;
+#endif
 }
 
 } // namespace nalu

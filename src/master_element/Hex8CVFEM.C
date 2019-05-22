@@ -27,8 +27,6 @@ namespace nalu{
 HexSCV::HexSCV()
   : MasterElement()
 {
-  MasterElement::intgLoc_         .assign(intgLoc_,         24+intgLoc_);
-  MasterElement::intgLocShift_    .assign(intgLocShift_,    24+intgLocShift_);
   MasterElement::nDim_                  = nDim_;
   MasterElement::nodesPerElement_       = nodesPerElement_;
   MasterElement::numIntPoints_          = numIntPoints_;
@@ -56,18 +54,32 @@ void HexSCV::determinant(
 {
   int lerr = 0;
 
+  const int npe  = nodesPerElement_;
+  const int nint = numIntPoints_;
   SIERRA_FORTRAN(hex_scv_det)
-    ( &nelem, &nodesPerElement_, &numIntPoints_, coords,
+    ( &nelem, &npe, &nint, coords,
       volume, error, &lerr );
 
+}
+
+void
+HexSCV::shape_fcn(SharedMemView<DoubleType**, DeviceShmem> &shpfc)
+{
+  hex8_shape_fcn(numIntPoints_, &intgLoc_[0], shpfc);
+}
+
+void
+HexSCV::shifted_shape_fcn(SharedMemView<DoubleType**, DeviceShmem> &shpfc)
+{
+  hex8_shape_fcn(numIntPoints_, &intgLocShift_[0], shpfc);
 }
 
 //--------------------------------------------------------------------------
 //-------- determinant -----------------------------------------------------
 //--------------------------------------------------------------------------
 void HexSCV::determinant(
-  SharedMemView<DoubleType**>& coords,
-  SharedMemView<DoubleType*>& volume)
+  SharedMemView<DoubleType**, DeviceShmem>& coords,
+  SharedMemView<DoubleType*, DeviceShmem>& volume)
 {
   constexpr int subDivisionTable[8][8] = {
       {  0,  8, 12, 11, 19, 20, 26, 25},
@@ -100,9 +112,9 @@ void HexSCV::determinant(
 //-------- grad_op ---------------------------------------------------------
 //--------------------------------------------------------------------------
 void HexSCV::grad_op(
-  SharedMemView<DoubleType**>&coords,
-  SharedMemView<DoubleType***>&gradop,
-  SharedMemView<DoubleType***>&deriv)
+  SharedMemView<DoubleType**, DeviceShmem>&coords,
+  SharedMemView<DoubleType***, DeviceShmem>&gradop,
+  SharedMemView<DoubleType***, DeviceShmem>&deriv)
 {
   hex8_derivative(numIntPoints_, &intgLoc_[0], deriv);
   generic_grad_op<AlgTraitsHex8>(deriv, coords, gradop);
@@ -121,14 +133,16 @@ void HexSCV::grad_op(
 {
   int lerr = 0;
 
+  const int npe  = nodesPerElement_;
+  const int nint = numIntPoints_;
   SIERRA_FORTRAN(hex_derivative)
-    ( &numIntPoints_,
+    ( &nint,
       &intgLoc_[0], deriv );
 
   SIERRA_FORTRAN(hex_gradient_operator)
     ( &nelem,
-      &nodesPerElement_,
-      &numIntPoints_,
+      &npe,
+      &nint,
       deriv,
       coords, gradop, det_j, error, &lerr );
 
@@ -140,9 +154,9 @@ void HexSCV::grad_op(
 //-------- shifted_grad_op -------------------------------------------------
 //--------------------------------------------------------------------------
 void HexSCV::shifted_grad_op(
-  SharedMemView<DoubleType**>&coords,
-  SharedMemView<DoubleType***>&gradop,
-  SharedMemView<DoubleType***>&deriv)
+  SharedMemView<DoubleType**, DeviceShmem>&coords,
+  SharedMemView<DoubleType***, DeviceShmem>&gradop,
+  SharedMemView<DoubleType***, DeviceShmem>&deriv)
 {
   hex8_derivative(numIntPoints_, &intgLocShift_[0], deriv);
   generic_grad_op<AlgTraitsHex8>(deriv, coords, gradop);
@@ -154,8 +168,9 @@ void HexSCV::shifted_grad_op(
 void
 HexSCV::shape_fcn(double *shpfc)
 {
+  const int nint = numIntPoints_;
   SIERRA_FORTRAN(hex_shape_fcn)
-    (&numIntPoints_,&intgLoc_[0],shpfc);
+    (&nint,&intgLoc_[0],shpfc);
 }
 
 //--------------------------------------------------------------------------
@@ -164,8 +179,9 @@ HexSCV::shape_fcn(double *shpfc)
 void
 HexSCV::shifted_shape_fcn(double *shpfc)
 {
+  const int nint = numIntPoints_;
   SIERRA_FORTRAN(hex_shape_fcn)
-    (&numIntPoints_,&intgLocShift_[0],shpfc);
+    (&nint,&intgLocShift_[0],shpfc);
 }
 
 //--------------------------------------------------------------------------
@@ -180,9 +196,9 @@ void HexSCV::Mij(
 }
 //-------------------------------------------------------------------------
 void HexSCV::Mij(
-    SharedMemView<DoubleType**>& coords,
-    SharedMemView<DoubleType***>& metric,
-    SharedMemView<DoubleType***>& deriv)
+    SharedMemView<DoubleType**, DeviceShmem>& coords,
+    SharedMemView<DoubleType***, DeviceShmem>& metric,
+    SharedMemView<DoubleType***, DeviceShmem>& deriv)
 {
   hex8_derivative(numIntPoints_, &intgLoc_[0], deriv);
   generic_Mij_3d<AlgTraitsHex8>(deriv, coords, metric);
@@ -191,22 +207,11 @@ void HexSCV::Mij(
 //--------------------------------------------------------------------------
 //-------- constructor -----------------------------------------------------
 //--------------------------------------------------------------------------
-HexSCS::HexSCS() : MasterElement() { 
+HexSCS::HexSCS()  
+  : MasterElement(HexSCS::scaleToStandardIsoFac_) {
   MasterElement::nDim_                  = nDim_;
   MasterElement::nodesPerElement_       = nodesPerElement_;
   MasterElement::numIntPoints_          = numIntPoints_;
-  MasterElement::scaleToStandardIsoFac_ = scaleToStandardIsoFac_;
-  MasterElement::nodeLoc_         .assign(&nodeLoc_[0][0],  24+&nodeLoc_[0][0]);
-  MasterElement::oppFace_         .assign(oppFace_,     24+oppFace_);
-  MasterElement::intgLoc_         .assign(intgLoc_,     36+intgLoc_);
-  MasterElement::intgLocShift_    .assign(intgLocShift_,36+intgLocShift_);
-  MasterElement::scsIpEdgeOrd_    .assign(scsIpEdgeOrd_,12+scsIpEdgeOrd_);
-  MasterElement::intgExpFace_     .assign(&intgExpFace_[0][0][0],  72+&intgExpFace_[0][0][0]);
-  MasterElement::intgExpFaceShift_.assign(&intgExpFaceShift_[0][0][0],72+&intgExpFaceShift_[0][0][0]);
-  MasterElement::nDim_                  = nDim_;
-  MasterElement::nodesPerElement_       = nodesPerElement_;
-  MasterElement::numIntPoints_          = numIntPoints_;
-  MasterElement::scaleToStandardIsoFac_ = scaleToStandardIsoFac_;
 }
 
 //--------------------------------------------------------------------------
@@ -225,7 +230,7 @@ HexSCS::ipNodeMap(
 //-------- shape_fcn -------------------------------------------------------
 //--------------------------------------------------------------------------
 void
-HexSCS::shape_fcn(SharedMemView<DoubleType**> &shpfc)
+HexSCS::shape_fcn(SharedMemView<DoubleType**, DeviceShmem> &shpfc)
 {
   hex8_shape_fcn(numIntPoints_, &intgLoc_[0], shpfc);
 }
@@ -234,7 +239,7 @@ HexSCS::shape_fcn(SharedMemView<DoubleType**> &shpfc)
 //-------- shifted_shape_fcn -----------------------------------------------
 //--------------------------------------------------------------------------
 void
-HexSCS::shifted_shape_fcn(SharedMemView<DoubleType**> &shpfc)
+HexSCS::shifted_shape_fcn(SharedMemView<DoubleType**, DeviceShmem> &shpfc)
 {
   hex8_shape_fcn(numIntPoints_, &intgLocShift_[0], shpfc);
 }
@@ -243,9 +248,9 @@ HexSCS::shifted_shape_fcn(SharedMemView<DoubleType**> &shpfc)
 //-------- grad_op ---------------------------------------------------------
 //--------------------------------------------------------------------------
 void HexSCS::grad_op(
-  SharedMemView<DoubleType**>&coords,
-  SharedMemView<DoubleType***>&gradop,
-  SharedMemView<DoubleType***>&deriv)
+  SharedMemView<DoubleType**, DeviceShmem>&coords,
+  SharedMemView<DoubleType***, DeviceShmem>&gradop,
+  SharedMemView<DoubleType***, DeviceShmem>&deriv)
 {
   hex8_derivative(numIntPoints_, &intgLoc_[0], deriv);
   generic_grad_op<AlgTraitsHex8>(deriv, coords, gradop);
@@ -255,9 +260,9 @@ void HexSCS::grad_op(
 //-------- shifted_grad_op -------------------------------------------------
 //--------------------------------------c------------------------------------
 void HexSCS::shifted_grad_op(
-  SharedMemView<DoubleType**>&coords,
-  SharedMemView<DoubleType***>&gradop,
-  SharedMemView<DoubleType***>&deriv)
+  SharedMemView<DoubleType**, DeviceShmem>&coords,
+  SharedMemView<DoubleType***, DeviceShmem>&gradop,
+  SharedMemView<DoubleType***, DeviceShmem>&deriv)
 {
   hex8_derivative(numIntPoints_, &intgLocShift_[0], deriv);
   generic_grad_op<AlgTraitsHex8>(deriv, coords, gradop);
@@ -267,8 +272,8 @@ void HexSCS::shifted_grad_op(
 //-------- determinant -----------------------------------------------------
 //--------------------------------------------------------------------------
 void HexSCS::determinant(
-  SharedMemView<DoubleType**>&coords,
-  SharedMemView<DoubleType**>&areav)
+  SharedMemView<DoubleType**, DeviceShmem>&coords,
+  SharedMemView<DoubleType**, DeviceShmem>&areav)
 {
   constexpr int hex_edge_facet_table[12][4] = {
       { 20,  8, 12, 26 },
@@ -306,7 +311,7 @@ void HexSCS::determinant(
 //-------- side_node_ordinals ----------------------------------------------
 //--------------------------------------------------------------------------
 const int *
-HexSCS::side_node_ordinals(int ordinal)
+HexSCS::side_node_ordinals (int ordinal) const
 {
   // define face_ordinal->node_ordinal mappings for each face (ordinal);
   return sideNodeOrdinals_[ordinal];
@@ -321,8 +326,10 @@ void HexSCS::determinant(
   double *areav,
   double *error)
 {
+  const int npe  = nodesPerElement_;
+  const int nint = numIntPoints_;
   SIERRA_FORTRAN(hex_scs_det)
-    ( &nelem, &nodesPerElement_, &numIntPoints_, coords, areav );
+    ( &nelem, &npe, &nint, coords, areav );
 
   // all is always well; no error checking
   *error = 0;
@@ -341,14 +348,16 @@ void HexSCS::grad_op(
 {
   int lerr = 0;
 
+  const int npe  = nodesPerElement_;
+  const int nint = numIntPoints_;
   SIERRA_FORTRAN(hex_derivative)
-    ( &numIntPoints_,
+    ( &nint,
       &intgLoc_[0], deriv );
 
   SIERRA_FORTRAN(hex_gradient_operator)
     ( &nelem,
-      &nodesPerElement_,
-      &numIntPoints_,
+      &npe,
+      &nint,
       deriv,
       coords, gradop, det_j, error, &lerr );
 
@@ -369,14 +378,16 @@ void HexSCS::shifted_grad_op(
 {
   int lerr = 0;
 
+  const int npe  = nodesPerElement_;
+  const int nint = numIntPoints_;
   SIERRA_FORTRAN(hex_derivative)
-    ( &numIntPoints_,
+    ( &nint,
       &intgLocShift_[0], deriv );
 
   SIERRA_FORTRAN(hex_gradient_operator)
     ( &nelem,
-      &nodesPerElement_,
-      &numIntPoints_,
+      &npe,
+      &nint,
       deriv,
       coords, gradop, det_j, error, &lerr );
 
@@ -390,15 +401,15 @@ void HexSCS::shifted_grad_op(
 void HexSCS::face_grad_op(
   const int face_ordinal,
   const bool shifted,
-  SharedMemView<DoubleType**>& coords,
-  SharedMemView<DoubleType***>& gradop)
+  SharedMemView<DoubleType**, DeviceShmem>& coords,
+  SharedMemView<DoubleType***, DeviceShmem>& gradop)
 {
   using traits = AlgTraitsQuad4Hex8;
   const double *exp_face = shifted ? &intgExpFaceShift_[0][0][0] : &intgExpFace_[0][0][0];
 
   constexpr int derivSize = traits::numFaceIp_ * traits::nodesPerElement_ * traits::nDim_;
   DoubleType psi[derivSize];
-  SharedMemView<DoubleType***> deriv(psi, traits::numFaceIp_, traits::nodesPerElement_, traits::nDim_);
+  SharedMemView<DoubleType***, DeviceShmem> deriv(psi, traits::numFaceIp_, traits::nodesPerElement_, traits::nDim_);
 
   const int offset = traits::numFaceIp_ * traits::nDim_ * face_ordinal;
   hex8_derivative(traits::numFaceIp_, &exp_face[offset], deriv);
@@ -407,8 +418,8 @@ void HexSCS::face_grad_op(
 
 void HexSCS::face_grad_op(
   int face_ordinal,
-  SharedMemView<DoubleType**>& coords,
-  SharedMemView<DoubleType***>& gradop)
+  SharedMemView<DoubleType**, DeviceShmem>& coords,
+  SharedMemView<DoubleType***, DeviceShmem>& gradop)
 {
   constexpr bool shifted = false;
   face_grad_op(face_ordinal, shifted, coords, gradop);
@@ -436,9 +447,10 @@ void HexSCS::face_grad_op(
         ( &nface,
           intgExpFace_[face_ordinal][k], dpsi );
 
+      const int npe  = nodesPerElement_;
       SIERRA_FORTRAN(hex_gradient_operator)
         ( &nface,
-          &nodesPerElement_,
+          &npe,
           &nface,
           dpsi,
           &coords[24*n], &gradop[k*nelem*24+n*24], &det_j[npf*n+k], error, &lerr );
@@ -454,8 +466,8 @@ void HexSCS::face_grad_op(
 //--------------------------------------------------------------------------
 void HexSCS::shifted_face_grad_op(
   int face_ordinal,
-  SharedMemView<DoubleType**>& coords,
-  SharedMemView<DoubleType***>& gradop)
+  SharedMemView<DoubleType**, DeviceShmem>& coords,
+  SharedMemView<DoubleType***, DeviceShmem>& gradop)
 {
   constexpr bool shifted = true;
   face_grad_op(face_ordinal, shifted, coords, gradop);
@@ -483,9 +495,10 @@ void HexSCS::shifted_face_grad_op(
         ( &nface,
           intgExpFaceShift_[face_ordinal][k], dpsi );
 
+      const int npe  = nodesPerElement_;
       SIERRA_FORTRAN(hex_gradient_operator)
         ( &nface,
-          &nodesPerElement_,
+          &npe,
           &nface,
           dpsi,
           &coords[24*n], &gradop[k*nelem*24+n*24], &det_j[npf*n+k], error, &lerr );
@@ -505,9 +518,11 @@ void HexSCS::gij(
   double *glowerij,
   double *deriv)
 {
+  const int npe  = nodesPerElement_;
+  const int nint = numIntPoints_;
   SIERRA_FORTRAN(threed_gij)
-    ( &nodesPerElement_,
-      &numIntPoints_,
+    ( &npe,
+      &nint,
       deriv,
       coords, gupperij, glowerij);
 }
@@ -516,10 +531,10 @@ void HexSCS::gij(
 //-------- gij -------------------------------------------------------------
 //--------------------------------------------------------------------------
 void HexSCS::gij(
-    SharedMemView<DoubleType**>& coords,
-    SharedMemView<DoubleType***>& gupper,
-    SharedMemView<DoubleType***>& glower,
-    SharedMemView<DoubleType***>& deriv)
+    SharedMemView<DoubleType**, DeviceShmem>& coords,
+    SharedMemView<DoubleType***, DeviceShmem>& gupper,
+    SharedMemView<DoubleType***, DeviceShmem>& glower,
+    SharedMemView<DoubleType***, DeviceShmem>& deriv)
 {
   hex8_derivative(numIntPoints_, &intgLoc_[0], deriv);
   generic_gij_3d<AlgTraitsHex8>(deriv, coords, gupper, glower);
@@ -537,9 +552,9 @@ void HexSCS::Mij(
 }
 //-------------------------------------------------------------------------
 void HexSCS::Mij(
-    SharedMemView<DoubleType**>& coords,
-    SharedMemView<DoubleType***>& metric,
-    SharedMemView<DoubleType***>& deriv)
+    SharedMemView<DoubleType**, DeviceShmem>& coords,
+    SharedMemView<DoubleType***, DeviceShmem>& metric,
+    SharedMemView<DoubleType***, DeviceShmem>& deriv)
 {
   hex8_derivative(numIntPoints_, &intgLoc_[0], deriv);
   generic_Mij_3d<AlgTraitsHex8>(deriv, coords, metric);
@@ -570,8 +585,9 @@ HexSCS::scsIpEdgeOrd()
 void
 HexSCS::shape_fcn(double *shpfc)
 {
+  const int nint = numIntPoints_;
   SIERRA_FORTRAN(hex_shape_fcn)
-    (&numIntPoints_,&intgLoc_[0],shpfc);
+    (&nint,&intgLoc_[0],shpfc);
 }
 
 //--------------------------------------------------------------------------
@@ -580,8 +596,9 @@ HexSCS::shape_fcn(double *shpfc)
 void
 HexSCS::shifted_shape_fcn(double *shpfc)
 {
+  const int nint = numIntPoints_;
   SIERRA_FORTRAN(hex_shape_fcn)
-    (&numIntPoints_,&intgLocShift_[0],shpfc);
+    (&nint,&intgLocShift_[0],shpfc);
 }
 
 //--------------------------------------------------------------------------
@@ -902,9 +919,10 @@ HexSCS::general_face_grad_op(
   SIERRA_FORTRAN(hex_derivative)
     ( &nface, &isoParCoord[0], dpsi );
 
+  const int npe  = nodesPerElement_;
   SIERRA_FORTRAN(hex_gradient_operator)
     ( &nface,
-      &nodesPerElement_,
+      &npe,
       &nface,
       dpsi,
       &coords[0], &gradop[0], &det_j[0], error, &lerr );

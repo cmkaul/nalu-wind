@@ -41,26 +41,26 @@ public:
   KOKKOS_FUNCTION
   virtual ~Tri32DSCV() = default;
 
-  virtual const int * ipNodeMap(int ordinal = 0) const final;
+  KOKKOS_FUNCTION virtual const int *  ipNodeMap(int ordinal = 0) const final;
 
-  void determinant(
-    SharedMemView<DoubleType**> &coords,
-    SharedMemView<DoubleType*> &vol) override ;
+  KOKKOS_FUNCTION void determinant(
+    SharedMemView<DoubleType**, DeviceShmem> &coords,
+    SharedMemView<DoubleType*, DeviceShmem> &vol) override ;
 
-  void grad_op(
-    SharedMemView<DoubleType**>& coords,
-    SharedMemView<DoubleType***>& gradop,
-    SharedMemView<DoubleType***>& deriv) override ;
+  KOKKOS_FUNCTION void grad_op(
+    SharedMemView<DoubleType**, DeviceShmem>& coords,
+    SharedMemView<DoubleType***, DeviceShmem>& gradop,
+    SharedMemView<DoubleType***, DeviceShmem>& deriv) override ;
 
-  void shifted_grad_op(
-    SharedMemView<DoubleType**>&coords,
-    SharedMemView<DoubleType***>&gradop,
-    SharedMemView<DoubleType***>&deriv) override ;
+  KOKKOS_FUNCTION void shifted_grad_op(
+    SharedMemView<DoubleType**, DeviceShmem>&coords,
+    SharedMemView<DoubleType***, DeviceShmem>&gradop,
+    SharedMemView<DoubleType***, DeviceShmem>&deriv) override ;
 
-  void Mij(
-    SharedMemView<DoubleType**>& coords,
-    SharedMemView<DoubleType***>& metric,
-    SharedMemView<DoubleType***>& deriv) override;
+  KOKKOS_FUNCTION void Mij(
+    SharedMemView<DoubleType**, DeviceShmem>& coords,
+    SharedMemView<DoubleType***, DeviceShmem>& metric,
+    SharedMemView<DoubleType***, DeviceShmem>& deriv) override;
 
   void Mij(
     const double *coords,
@@ -84,10 +84,18 @@ public:
     const double *par_coord,
     double* shape_fcn);
 
+  virtual const double* integration_locations() const final {
+    return intgLoc_;
+  }
+  virtual const double* integration_location_shift() const final {
+    return intgLocShift_;
+  }
+
+
 private :
-  const int nDim_ = AlgTraits::nDim_;
-  const int nodesPerElement_ = AlgTraits::nodesPerElement_; 
-  const int numIntPoints_ = AlgTraits::numScvIp_; 
+  static constexpr int nDim_ = AlgTraits::nDim_;
+  static constexpr int nodesPerElement_ = AlgTraits::nodesPerElement_; 
+  static constexpr int numIntPoints_ = AlgTraits::numScvIp_; 
 
   // define ip node mappings
   const int ipNodeMap_[3] = {0, 1, 2}; 
@@ -121,11 +129,11 @@ public:
   KOKKOS_FUNCTION
   virtual ~Tri32DSCS() = default;
 
-  virtual const int * ipNodeMap(int ordinal = 0) const final;
+  KOKKOS_FUNCTION virtual const int *  ipNodeMap(int ordinal = 0) const final;
 
-  void determinant(
-    SharedMemView<DoubleType**>& coords,
-    SharedMemView<DoubleType**>& areav) override ;
+  KOKKOS_FUNCTION void determinant(
+    SharedMemView<DoubleType**, DeviceShmem>& coords,
+    SharedMemView<DoubleType**, DeviceShmem>& areav) override ;
 
   void determinant(
     const int nelem,
@@ -133,10 +141,10 @@ public:
     double *areav,
     double * error ) override;
 
-  void grad_op(
-    SharedMemView<DoubleType**>& coords,
-    SharedMemView<DoubleType***>& gradop,
-    SharedMemView<DoubleType***>& deriv) override ;
+  KOKKOS_FUNCTION void grad_op(
+    SharedMemView<DoubleType**, DeviceShmem>& coords,
+    SharedMemView<DoubleType***, DeviceShmem>& gradop,
+    SharedMemView<DoubleType***, DeviceShmem>& deriv) override ;
 
   void grad_op(
     const int nelem,
@@ -146,10 +154,10 @@ public:
     double *det_j,
     double * error ) override;
 
-  void shifted_grad_op(
-    SharedMemView<DoubleType**>& coords,
-    SharedMemView<DoubleType***>& gradop,
-    SharedMemView<DoubleType***>& deriv) override ;
+  KOKKOS_FUNCTION void shifted_grad_op(
+    SharedMemView<DoubleType**, DeviceShmem>& coords,
+    SharedMemView<DoubleType***, DeviceShmem>& gradop,
+    SharedMemView<DoubleType***, DeviceShmem>& deriv) override ;
 
   void shifted_grad_op(
     const int nelem,
@@ -159,10 +167,10 @@ public:
     double *det_j,
     double * error ) override;
 
-  void face_grad_op(
+  KOKKOS_FUNCTION void face_grad_op(
     int face_ordinal,
-    SharedMemView<DoubleType**>& coords,
-    SharedMemView<DoubleType***>& gradop) final;
+    SharedMemView<DoubleType**, DeviceShmem>& coords,
+    SharedMemView<DoubleType***, DeviceShmem>& gradop) final;
 
   void face_grad_op(
     const int nelem,
@@ -172,10 +180,10 @@ public:
     double *det_j,
     double * error ) override;
 
-  void shifted_face_grad_op(
+  KOKKOS_FUNCTION void shifted_face_grad_op(
     int face_ordinal,
-    SharedMemView<DoubleType**>& coords,
-    SharedMemView<DoubleType***>& gradop) final;
+    SharedMemView<DoubleType**, DeviceShmem>& coords,
+    SharedMemView<DoubleType***, DeviceShmem>& gradop) final;
 
   void shifted_face_grad_op(
     const int nelem,
@@ -185,11 +193,11 @@ public:
     double *det_j,
     double * error ) override;
 
-  void gij(
-    SharedMemView<DoubleType**>& coords,
-    SharedMemView<DoubleType***>& gupper,
-    SharedMemView<DoubleType***>& glower,
-    SharedMemView<DoubleType***>& deriv) override ;
+  KOKKOS_FUNCTION void gij(
+    SharedMemView<DoubleType**, DeviceShmem>& coords,
+    SharedMemView<DoubleType***, DeviceShmem>& gupper,
+    SharedMemView<DoubleType***, DeviceShmem>& glower,
+    SharedMemView<DoubleType***, DeviceShmem>& deriv) override ;
 
   void gij(
     const double *coords,
@@ -197,17 +205,17 @@ public:
     double *glowerij,
     double *deriv) override;
 
-  void Mij(
-    SharedMemView<DoubleType**>& coords,
-    SharedMemView<DoubleType***>& metric,
-    SharedMemView<DoubleType***>& deriv) override;
+  KOKKOS_FUNCTION void Mij(
+    SharedMemView<DoubleType**, DeviceShmem>& coords,
+    SharedMemView<DoubleType***, DeviceShmem>& metric,
+    SharedMemView<DoubleType***, DeviceShmem>& deriv) override;
 
   void Mij(
     const double *coords,
     double *metric,
     double *deriv) override;
 
-  const int * adjacentNodes() final;
+  KOKKOS_FUNCTION const int * adjacentNodes() final;
 
   const int * scsIpEdgeOrd() override;
 
@@ -262,12 +270,18 @@ public:
     const double *side_pcoords,
     double *elem_pcoords) override;
 
-  const int* side_node_ordinals(int sideOrdinal) final;
+  const int* side_node_ordinals(int sideOrdinal) const final;
 
+  virtual const double* integration_locations() const final {
+    return intgLoc_;
+  }
+  virtual const double* integration_location_shift() const final {
+    return intgLocShift_;
+  }
 private:
-  const int nDim_ = AlgTraits::nDim_;
-  const int nodesPerElement_ = AlgTraits::nodesPerElement_; 
-  const int numIntPoints_ = AlgTraits::numScsIp_; 
+  static constexpr int nDim_ = AlgTraits::nDim_;
+  static constexpr int nodesPerElement_ = AlgTraits::nodesPerElement_; 
+  static constexpr int numIntPoints_ = AlgTraits::numScsIp_; 
 
   const int sideNodeOrdinals_[3][2] = {
      {0, 1},  // ordinal 0
@@ -310,6 +324,7 @@ private:
    0.50,  0.50,  // surf 1: 1->3
    0.00,  0.50}; // surf 1: 0->2
  
+#if 0
   // exposed face
   const double intgExpFace_[3][2][2] =   
   // face 0: scs 0, 1: nodes 0,1
@@ -321,6 +336,7 @@ private:
   // face 2: surf 0, 1: nodes 2,0
    {{0.00,  0.75},
     {0.00,  0.25}}};
+#endif
 
   // boundary integration point ip node mapping (ip on an ordinal to local node number)
   const int ipNodeMap_[3][2]= // 2 ips * 3 faces

@@ -9,19 +9,15 @@
 #ifndef MasterElement_h
 #define MasterElement_h
 
-#include <master_element/MasterElementFactory.h>
-
 #include <AlgTraits.h>
 
 // NGP-based includes
 #include "SimdInterface.h"
 #include "KokkosInterface.h"
 
-#include <vector>
-#include <cstdlib>
+#include "stk_util/util/ReportHandler.hpp"
+
 #include <stdexcept>
-#include <string>
-#include <array>
 
 namespace stk {
   struct topology;
@@ -47,81 +43,90 @@ class MasterElement
 {
 public:
   KOKKOS_FUNCTION
-  MasterElement();
+  MasterElement(const double scaleToStandardIsoFac=1.0);
   KOKKOS_FUNCTION
   virtual ~MasterElement() {} // = default is apparently not allowed for virtual destructors...
 
   // NGP-ready methods first
-  virtual void shape_fcn(
-    SharedMemView<DoubleType**> &/* shpfc */) {
-    throw std::runtime_error("shape_fcn using SharedMemView is not implemented");}
-
-  virtual void shifted_shape_fcn(
-    SharedMemView<DoubleType**> &/* shpfc */) {
-    throw std::runtime_error("shifted_shape_fcn using SharedMemView is not implemented");}
-
-  virtual void grad_op(
-    SharedMemView<DoubleType**>&/* coords */,
-    SharedMemView<DoubleType***>&/* gradop */,
-    SharedMemView<DoubleType***>&/* deriv */) {
-    throw std::runtime_error("grad_op using SharedMemView is not implemented");}
-
-  virtual void shifted_grad_op(
-    SharedMemView<DoubleType**>&/* coords */,
-    SharedMemView<DoubleType***>&/* gradop */,
-    SharedMemView<DoubleType***>&/* deriv */) {
-    throw std::runtime_error("shifted_grad_op using SharedMemView is not implemented");}
-
-  virtual void face_grad_op(
-    int /* face_ordinal */,
-    SharedMemView<DoubleType**>& /* coords */,
-    SharedMemView<DoubleType***>& /* gradop */) {
-    throw std::runtime_error("face_grad_op using SharedMemView is not implemented");}
-
-  virtual void shifted_face_grad_op(
-    int /* face_ordinal */,
-    SharedMemView<DoubleType**>& /* coords */,
-    SharedMemView<DoubleType***>& /* gradop */) {
-    throw std::runtime_error("shifted_face_grad_op using SharedMemView is not implemented");}
-
-  virtual void grad_op_fem(
-    SharedMemView<DoubleType**>&/* coords */,
-    SharedMemView<DoubleType***>&/* gradop */,
-    SharedMemView<DoubleType***>&/* deriv */,
-    SharedMemView<DoubleType*>& /*det_j*/) {
-    throw std::runtime_error("grad_op using SharedMemView is not implemented");}
-
-  virtual void shifted_grad_op_fem(
-    SharedMemView<DoubleType**>&/* coords */,
-    SharedMemView<DoubleType***>&/* gradop */,
-    SharedMemView<DoubleType***>&/* deriv */,
-    SharedMemView<DoubleType*>& /*det_j*/) {
-    throw std::runtime_error("shifted_grad_op using SharedMemView is not implemented");}
-
-  virtual void determinant(
-    SharedMemView<DoubleType**>&/* coords */,
-    SharedMemView<DoubleType**>&/* areav */) {
-    throw std::runtime_error("determinant using SharedMemView is not implemented");}
-
-  virtual void gij(
-    SharedMemView<DoubleType**>& /* coords */,
-    SharedMemView<DoubleType***>& /* gupper */,
-    SharedMemView<DoubleType***>& /* glower */,
-    SharedMemView<DoubleType***>& /* deriv */) {
-    throw std::runtime_error("gij using SharedMemView is not implemented");
+  KOKKOS_FUNCTION virtual void shape_fcn(
+    SharedMemView<DoubleType**, DeviceShmem> &/* shpfc */) {
+    NGP_ThrowErrorMsg("MasterElement::shape_fcn not implemented for element");
   }
 
-  virtual void Mij(
-    SharedMemView<DoubleType**>& /* coords */,
-    SharedMemView<DoubleType***>& /* metric */,
-    SharedMemView<DoubleType***>& /* deriv */) {
-    throw std::runtime_error("Mij using SharedMemView is not implemented");
+  KOKKOS_FUNCTION virtual void shifted_shape_fcn(
+    SharedMemView<DoubleType**, DeviceShmem> &/* shpfc */) {
+    NGP_ThrowErrorMsg("MasterElement::shifted_shape_fcn not implemented for element");
   }
 
-  virtual void determinant(
-    SharedMemView<DoubleType**>& /* coords */,
-    SharedMemView<DoubleType*>& /* volume */) {
-    throw std::runtime_error("scv determinant using SharedMemView is not implemented");
+  KOKKOS_FUNCTION virtual void grad_op(
+    SharedMemView<DoubleType**, DeviceShmem>&/* coords */,
+    SharedMemView<DoubleType***, DeviceShmem>&/* gradop */,
+    SharedMemView<DoubleType***, DeviceShmem>&/* deriv */) {
+    NGP_ThrowErrorMsg("MasterElement::grad_op not implemented for element");
+  }
+
+  KOKKOS_FUNCTION virtual void shifted_grad_op(
+    SharedMemView<DoubleType**, DeviceShmem>&/* coords */,
+    SharedMemView<DoubleType***, DeviceShmem>&/* gradop */,
+    SharedMemView<DoubleType***, DeviceShmem>&/* deriv */) {
+    NGP_ThrowErrorMsg("MasterElement::shifted_grad_op not implemented for element");
+  }
+
+  KOKKOS_FUNCTION virtual void face_grad_op(
+    int /* face_ordinal */,
+    SharedMemView<DoubleType**, DeviceShmem>& /* coords */,
+    SharedMemView<DoubleType***, DeviceShmem>& /* gradop */) {
+    NGP_ThrowErrorMsg("MasterElement::face_grad_op not implemented for element");
+  }
+
+  KOKKOS_FUNCTION virtual void shifted_face_grad_op(
+    int /* face_ordinal */,
+    SharedMemView<DoubleType**, DeviceShmem>& /* coords */,
+    SharedMemView<DoubleType***, DeviceShmem>& /* gradop */) {
+    NGP_ThrowErrorMsg("MasterElement::shifted_face_grad_op not implemented for element");
+  }
+
+  KOKKOS_FUNCTION virtual void grad_op_fem(
+    SharedMemView<DoubleType**, DeviceShmem>&/* coords */,
+    SharedMemView<DoubleType***, DeviceShmem>&/* gradop */,
+    SharedMemView<DoubleType***, DeviceShmem>&/* deriv */,
+    SharedMemView<DoubleType*, DeviceShmem>& /*det_j*/) {
+    NGP_ThrowErrorMsg("MasterElement::grad_op_fem not implemented for element");
+  }
+
+  KOKKOS_FUNCTION virtual void shifted_grad_op_fem(
+    SharedMemView<DoubleType**, DeviceShmem>&/* coords */,
+    SharedMemView<DoubleType***, DeviceShmem>&/* gradop */,
+    SharedMemView<DoubleType***, DeviceShmem>&/* deriv */,
+    SharedMemView<DoubleType*, DeviceShmem>& /*det_j*/) {
+    NGP_ThrowErrorMsg("MasterElement::shifted_grad_op_fem not implemented for element");
+  }
+
+  KOKKOS_FUNCTION virtual void determinant(
+    SharedMemView<DoubleType**, DeviceShmem>&/* coords */,
+    SharedMemView<DoubleType**, DeviceShmem>&/* areav */) {
+    NGP_ThrowErrorMsg("MasterElement::determinant not implemented for element");
+  }
+
+  KOKKOS_FUNCTION virtual void gij(
+    SharedMemView<DoubleType**, DeviceShmem>& /* coords */,
+    SharedMemView<DoubleType***, DeviceShmem>& /* gupper */,
+    SharedMemView<DoubleType***, DeviceShmem>& /* glower */,
+    SharedMemView<DoubleType***, DeviceShmem>& /* deriv */) {
+    NGP_ThrowErrorMsg("MasterElement::gij not implemented for element");
+  }
+
+  KOKKOS_FUNCTION virtual void Mij(
+    SharedMemView<DoubleType**, DeviceShmem>& /* coords */,
+    SharedMemView<DoubleType***, DeviceShmem>& /* metric */,
+    SharedMemView<DoubleType***, DeviceShmem>& /* deriv */) {
+    NGP_ThrowErrorMsg("MasterElement::Mij not implemented for element");
+  }
+
+  KOKKOS_FUNCTION virtual void determinant(
+    SharedMemView<DoubleType**, DeviceShmem>& /* coords */,
+    SharedMemView<DoubleType*, DeviceShmem>& /* volume */) {
+    NGP_ThrowErrorMsg("MasterElement::determinant not implemented for element");
   }
 
   // non-NGP-ready methods second
@@ -189,17 +194,19 @@ public:
      double * /* error  */) {
      throw std::runtime_error("shifted_face_grad_op not implemented");}
 
-  virtual const int * adjacentNodes() {
-    throw std::runtime_error("adjacentNodes not implemented");
-    }
+  KOKKOS_FUNCTION virtual const int * adjacentNodes() {
+    NGP_ThrowErrorMsg("MasterElement::adjacentNodes not implemented");
+    return nullptr;
+  }
 
   virtual const int * scsIpEdgeOrd() {
     throw std::runtime_error("scsIpEdgeOrd not implemented");
-    }
+  }
 
-  virtual const int * ipNodeMap(int /* ordinal */ = 0) const {
-      throw std::runtime_error("ipNodeMap not implemented");
-     }
+  KOKKOS_FUNCTION virtual const int *  ipNodeMap(int /* ordinal */ = 0) const {
+    NGP_ThrowErrorMsg("MasterElement::ipNodeMap not implemented");
+    return nullptr;
+  }
 
   virtual void shape_fcn(
     double * /* shpfc */) {
@@ -264,72 +271,30 @@ public:
   bool within_tolerance(const double & val, const double & tol) const;
   double vector_norm_sq(const double * vect, int len) const;
 
-  virtual int ndim() const {return nDim_;} 
-  virtual void ndim(const int n) {nDim_=n;} 
+  virtual int ndim()                           const {return nDim_;} 
+  virtual int nodes_per_element()              const {return nodesPerElement_;} 
+  KOKKOS_FUNCTION int num_integration_points() const {return numIntPoints_;}
+          double scal_to_standard_iso_factor() const {return scaleToStandardIsoFac_;} 
 
-  virtual int nodes_per_element() const {return nodesPerElement_;} 
-  virtual void nodes_per_element(const int n) {nodesPerElement_=n;} 
-
-  virtual int num_integration_points() const {return numIntPoints_;} 
-  virtual void num_integration_points(const int n) {numIntPoints_=n;} 
-
-  virtual double scal_to_standard_iso_factor() const {return scaleToStandardIsoFac_;} 
-  virtual void scal_to_standard_iso_factor(const double n) {scaleToStandardIsoFac_=n;} 
-
-  virtual const int *adjacentNodes() const {throw std::runtime_error("adjacentNodes");} 
-
-  //virtual const std::vector<int>& opposing_nodes() const {return oppNode_;} 
-  //virtual void opposing_nodes(const std::vector<int>& v) {oppNode_=v;} 
-
-  virtual const std::vector<int>& opposing_face() const {return oppFace_;} 
-  virtual void opposing_face(const std::vector<int>& v) {oppFace_=v;} 
-
-  virtual const std::vector<double>& integration_locations() const {return intgLoc_;} 
-  virtual void integration_locations(const std::vector<double>& v) {intgLoc_=v;} 
-
-  virtual const std::vector<double>& integration_location_shift() const {return intgLocShift_;} 
-  virtual void integration_location_shift(const std::vector<double>& v) {intgLocShift_=v;} 
-
-  virtual const std::vector<double>& integration_exp_face() const {return intgExpFace_;} 
-  virtual void integration_exp_face(const std::vector<double>& v) {intgExpFace_=v;} 
-
-  virtual const std::vector<double>& integration_exp_face_shift() const {return intgExpFaceShift_;} 
-  virtual void integration_exp_face_shift(const std::vector<double>& v) {intgExpFaceShift_=v;} 
-
-  virtual const std::vector<double>& node_locations() const {return nodeLoc_;} 
-  virtual void node_locations(const std::vector<double>& v) {nodeLoc_=v;} 
-
-  virtual const std::vector<int>& side_offsets() const {return sideOffset_;} 
-  virtual void side_offsets(const std::vector<int>& v) {sideOffset_=v;} 
-
-  virtual const std::vector<int>& scs_ip_edge_ordinals() const {return scsIpEdgeOrd_;} 
-  virtual void scs_ip_edge_ordinals(const std::vector<int>& v) {scsIpEdgeOrd_=v;} 
-
-  virtual const std::vector<double>& weights() const {return weights_;} 
-  virtual void weights(const std::vector<double>& v) {weights_=v;} 
-
-  virtual const int* side_node_ordinals(int /* sideOrdinal */) {
-    throw std::runtime_error("side_node_ordinals not implemented");
+  KOKKOS_FUNCTION virtual const int   * adjacentNodes()              const {
+#ifndef KOKKOS_ENABLE_CUDA
+    throw std::runtime_error("adjacentNodes not implimented");
+#else
+    return nullptr;
+#endif
   }
+  virtual const double* integration_locations()      const {throw std::runtime_error("integration_locations not implemented");}
+  virtual const double* integration_location_shift() const {throw std::runtime_error("adjacentNodes not implimented");}
+  virtual const double* integration_exp_face_shift() const {throw std::runtime_error("integration_exp_face_shift not implimented");}
+  virtual const int   * side_node_ordinals(int)      const {throw std::runtime_error("side_node_ordinals not implemented");}
+
 
   int nDim_;
   int nodesPerElement_;
+protected:
   int numIntPoints_;
-  double scaleToStandardIsoFac_;
-
-  //std::vector<int> oppNode_;
-  std::vector<int> oppFace_;
-  std::vector<double> intgLoc_;
-  std::vector<double> intgLocShift_;
-  std::vector<double> intgExpFace_;
-  std::vector<double> intgExpFaceShift_;
-  std::vector<double> nodeLoc_;
-  std::vector<int> sideOffset_;
-  std::vector<int> scsIpEdgeOrd_;
-
-  // FEM
-  std::vector<double>weights_;
-
+private:
+  const double scaleToStandardIsoFac_;
 };
 
 } // namespace nalu

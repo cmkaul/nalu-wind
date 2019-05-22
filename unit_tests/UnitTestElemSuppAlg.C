@@ -10,6 +10,7 @@
 #include <stk_mesh/base/Field.hpp>
 #include <stk_mesh/base/FieldBLAS.hpp>
 
+#include <master_element/MasterElementFactory.h>
 #include <stk_util/parallel/Parallel.hpp>
 #include <Kokkos_Core.hpp>
 
@@ -30,7 +31,7 @@ void element_discrete_laplacian_kernel_3d(
 {
     const int nDim = 3;
     const int nodesPerElem = meSCS.nodesPerElement_;
-    const int numScsIp = meSCS.numIntPoints_;
+    const int numScsIp = meSCS.num_integration_points();
 
     const int* lrscv = meSCS.adjacentNodes();
 
@@ -145,6 +146,7 @@ public:
           Kokkos::parallel_for(Kokkos::TeamThreadRange(team, bkt.size()), [&](const size_t& jj)
           {
             fill_pre_req_data(dataNeededNGP, ngpMesh, stk::topology::ELEMENT_RANK, bkt[jj], prereqData);
+            fill_master_element_views(dataNeededNGP, prereqData);
 
             for(SuppAlg* alg : suppAlgs_) {
               alg->elem_execute(topo, *meSCS, prereqData);

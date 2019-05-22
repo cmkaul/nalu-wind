@@ -38,15 +38,12 @@ namespace nalu{
 //--------------------------------------------------------------------------
 KOKKOS_FUNCTION
 Edge2DSCS::Edge2DSCS()
-  : MasterElement(),
+  : MasterElement(Edge2DSCS::scaleToStandardIsoFac_),
     elemThickness_(0.01)
 {
   MasterElement::nDim_ = nDim_;
   MasterElement::nodesPerElement_ = nodesPerElement_;
   MasterElement::numIntPoints_ = numIntPoints_;
-  MasterElement::scaleToStandardIsoFac_ = scaleToStandardIsoFac_;
-  MasterElement::intgLoc_.assign(intgLoc_, 2+intgLoc_);
-  MasterElement::intgLocShift_.assign(intgLocShift_, 2+intgLocShift_);
 }
 
 //--------------------------------------------------------------------------
@@ -141,7 +138,7 @@ Edge2DSCS::isInElement(
   if (2 == nDim_) 
     par_coor[1] = alpha;
 
-  std::vector<double> x(2);
+  std::array<double,2> x;
   x[0] = par_coor[0];
   x[1] = alpha;
   const double dist = parametric_distance(x);
@@ -153,7 +150,7 @@ Edge2DSCS::isInElement(
 //-------- parametric_distance ---------------------------------------------
 //--------------------------------------------------------------------------
 double
-Edge2DSCS::parametric_distance(const std::vector<double> &x)
+Edge2DSCS::parametric_distance(const std::array<double,2> &x)
 {
   double dist = std::fabs(x[0]);
   if (elemThickness_ < x[1] && dist < 1.0+x[1]) 

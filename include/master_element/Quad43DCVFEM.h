@@ -28,51 +28,51 @@ public:
   KOKKOS_FUNCTION
   virtual ~Quad3DSCS() = default;
 
-  virtual const int * ipNodeMap(int ordinal = 0) const final;
+  KOKKOS_FUNCTION virtual const int *  ipNodeMap(int ordinal = 0) const final;
  
   // NGP-ready methods first
-  void shape_fcn(
-    SharedMemView<DoubleType**> &shpfc);
+  KOKKOS_FUNCTION void shape_fcn(
+    SharedMemView<DoubleType**, DeviceShmem> &shpfc) override;
 
-  void shifted_shape_fcn(
-    SharedMemView<DoubleType**> &shpfc);
+  KOKKOS_FUNCTION void shifted_shape_fcn(
+    SharedMemView<DoubleType**, DeviceShmem> &shpfc) override;
 
-  void quad4_shape_fcn(
+  KOKKOS_FUNCTION void quad4_shape_fcn(
     const double *isoParCoord,
-    SharedMemView<DoubleType**> &shpfc);
+    SharedMemView<DoubleType**, DeviceShmem> &shpfc);
 
   void determinant(
     const int nelem,
     const double *coords,
     double *areav,
-    double * error );
+    double * error ) override;
 
   void shape_fcn(
-    double *shpfc);
+    double *shpfc) override;
 
   void shifted_shape_fcn(
-    double *shpfc);
+    double *shpfc) override;
 
   double isInElement(
     const double *elemNodalCoord,
     const double *pointCoord,
-    double *isoParCoord);
+    double *isoParCoord) override;
   
   void interpolatePoint(
     const int &nComp,
     const double *isoParCoord,
     const double *field,
-    double *result);
+    double *result) override;
 
   void general_shape_fcn(
     const int numIp,
     const double *isoParCoord,
-    double *shpfc);
+    double *shpfc) override;
 
   void general_normal(
     const double *isoParCoord,
     const double *coords,
-    double *normal);
+    double *normal) override;
 
   void non_unit_face_normal(
     const double * par_coord,
@@ -84,12 +84,19 @@ public:
   const double elemThickness_;
 
 
+  virtual const double* integration_locations() const final {
+    return intgLoc_;
+  }
+  virtual const double* integration_location_shift() const final {
+    return intgLocShift_;
+  }
+
 private:
 
   static const int nDim_ = AlgTraits::nDim_;
   static const int nodesPerElement_ = AlgTraits::nodesPerElement_;
   static const int numIntPoints_ = AlgTraits::numScsIp_;
-  const double scaleToStandardIsoFac_ = 2.0;
+  static constexpr double scaleToStandardIsoFac_ = 2.0;
 
   // define ip node mappings; ordinal size = 1
   const int ipNodeMap_[nodesPerElement_] = {0, 1, 2, 3};

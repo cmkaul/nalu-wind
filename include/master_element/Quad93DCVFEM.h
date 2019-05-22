@@ -39,11 +39,16 @@ public:
 
   using MasterElement::determinant;
 
-  virtual const int * ipNodeMap(int ordinal = 0) const final;
+  KOKKOS_FUNCTION virtual const int *  ipNodeMap(int ordinal = 0) const final;
 
-  using MasterElement::shape_fcn;
-  using MasterElement::shifted_shape_fcn;
+  KOKKOS_FUNCTION virtual void shape_fcn(
+     SharedMemView<DoubleType**, DeviceShmem> &shpfc) override;
+
   void shape_fcn(double *shpfc) final;
+
+  KOKKOS_FUNCTION virtual void shifted_shape_fcn (
+     SharedMemView<DoubleType**, DeviceShmem> &shpfc) override;
+
   void shifted_shape_fcn(double *shpfc) final;
 
   void determinant(
@@ -73,8 +78,12 @@ public:
     const double *coords,
     double *normal) final;
 
-  using MasterElement::num_integration_points;
-  int num_integration_points() const {return numIntPoints_;}
+  virtual const double* integration_locations() const final {
+    return intgLoc_;
+  }
+  virtual const double* integration_location_shift() const final {
+    return intgLocShift_;
+  }
 
 private:
   static const int nDim_       = AlgTraits::nDim_;  

@@ -35,7 +35,7 @@ namespace sierra{
 namespace nalu{
 
 //-------- tri_derivative -----------------------------------------------------
-void tri_derivative (SharedMemView<DoubleType***>& deriv) {
+void tri_derivative (SharedMemView<DoubleType***, DeviceShmem>& deriv) {
   const int npts = deriv.extent(0); 
   for (int j=0; j<npts; ++j) {
     deriv(j,0,0) = -1.0;
@@ -49,9 +49,9 @@ void tri_derivative (SharedMemView<DoubleType***>& deriv) {
 
 //-------- tri_gradient_operator -----------------------------------------------------
 void tri_gradient_operator(
-  SharedMemView<DoubleType**>& coords,
-  SharedMemView<DoubleType***>& gradop,
-  SharedMemView<DoubleType***>& deriv) {
+  SharedMemView<DoubleType**, DeviceShmem>& coords,
+  SharedMemView<DoubleType***, DeviceShmem>& gradop,
+  SharedMemView<DoubleType***, DeviceShmem>& deriv) {
       
   const int nint = deriv.extent(0);
   const int npe  = deriv.extent(1);
@@ -105,10 +105,6 @@ Tri32DSCV::Tri32DSCV()
   MasterElement::nDim_            = nDim_;
   MasterElement::nodesPerElement_ = nodesPerElement_;
   MasterElement::numIntPoints_    = numIntPoints_;
-
-  // define ip node mappings
-  MasterElement::intgLoc_.assign     (intgLoc_,      6+intgLoc_);
-  MasterElement::intgLocShift_.assign(intgLocShift_, 6+intgLocShift_);
 }
 
 //--------------------------------------------------------------------------
@@ -164,8 +160,8 @@ Tri32DSCV::tri_shape_fcn(
 //-------- determinant -----------------------------------------------------
 //--------------------------------------------------------------------------
 void Tri32DSCV::determinant(
-  SharedMemView<DoubleType**> &coords,
-  SharedMemView<DoubleType*> &vol) {
+  SharedMemView<DoubleType**, DeviceShmem> &coords,
+  SharedMemView<DoubleType*, DeviceShmem> &vol) {
 
   const int nint = numIntPoints_;
 
@@ -275,9 +271,9 @@ void Tri32DSCV::determinant(
 //-------- grad_op ---------------------------------------------------------
 //--------------------------------------------------------------------------
 void Tri32DSCV::grad_op(
-  SharedMemView<DoubleType**>& coords,
-  SharedMemView<DoubleType***>& gradop,
-  SharedMemView<DoubleType***>& deriv) {
+  SharedMemView<DoubleType**, DeviceShmem>& coords,
+  SharedMemView<DoubleType***, DeviceShmem>& gradop,
+  SharedMemView<DoubleType***, DeviceShmem>& deriv) {
   tri_derivative(deriv);
   tri_gradient_operator(coords, gradop, deriv);
 }
@@ -286,9 +282,9 @@ void Tri32DSCV::grad_op(
 //-------- shifted_grad_op -------------------------------------------------
 //--------------------------------------------------------------------------
 void Tri32DSCV::shifted_grad_op(
-  SharedMemView<DoubleType**>& coords,
-  SharedMemView<DoubleType***>& gradop,
-  SharedMemView<DoubleType***>& deriv) {
+  SharedMemView<DoubleType**, DeviceShmem>& coords,
+  SharedMemView<DoubleType***, DeviceShmem>& gradop,
+  SharedMemView<DoubleType***, DeviceShmem>& deriv) {
   tri_derivative(deriv);
   tri_gradient_operator(coords, gradop, deriv);
 }
@@ -301,8 +297,10 @@ void Tri32DSCV::determinant(
 {
   int lerr = 0;
 
+  const int npe  = nodesPerElement_;
+  const int nint = numIntPoints_;
   SIERRA_FORTRAN(tri_scv_det)
-    ( &nelem, &nodesPerElement_, &numIntPoints_, coords,
+    ( &nelem, &npe, &nint, coords,
       volume, error, &lerr );
 }
 
@@ -326,9 +324,9 @@ void Tri32DSCV::Mij(
 
 //-------------------------------------------------------------------------
 void Tri32DSCV::Mij(
-  SharedMemView<DoubleType**>& coords,
-  SharedMemView<DoubleType***>& metric,
-  SharedMemView<DoubleType***>& deriv)
+  SharedMemView<DoubleType**, DeviceShmem>& coords,
+  SharedMemView<DoubleType***, DeviceShmem>& metric,
+  SharedMemView<DoubleType***, DeviceShmem>& deriv)
 {
   generic_Mij_2d<AlgTraitsTri3_2D>(deriv, coords, metric);
 }
@@ -344,17 +342,6 @@ Tri32DSCS::Tri32DSCS()
   MasterElement::nodesPerElement_ = nodesPerElement_;
   MasterElement::numIntPoints_ = numIntPoints_;
 
-  // elem-edge mapping from ip
-  MasterElement::scsIpEdgeOrd_.assign(scsIpEdgeOrd_, 3+scsIpEdgeOrd_);
-  // define opposing face
-  MasterElement::oppFace_.assign(&oppFace_[0][0], 6+&oppFace_[0][0]);
-  // standard integration location
-  MasterElement::intgLoc_.assign(intgLoc_, 6+intgLoc_);
-  // shifted
-  MasterElement::intgLocShift_.assign(intgLocShift_, 6+intgLocShift_);
-  // exposed face
-  MasterElement::intgExpFace_.assign(&intgExpFace_[0][0][0], 12+&intgExpFace_[0][0][0]);
-  
   const std::array<std::array<double,2>,3> nodeLocations =
   {{
       {{0.0,0.0}}, {{1.0,0}}, {{0.0,1.0}}
@@ -368,7 +355,6 @@ Tri32DSCS::Tri32DSCS()
       intgExpFaceShift_[k][n][1] = nodeLocations[ordinals[n]][1];
     }
   }
-  MasterElement::intgExpFaceShift_.assign(&intgExpFaceShift_[0][0][0], 12+&intgExpFaceShift_[0][0][0]);
 }
 
 //--------------------------------------------------------------------------
@@ -386,8 +372,7 @@ Tri32DSCS::ipNodeMap(
 //-------- side_node_ordinals ----------------------------------------------
 //--------------------------------------------------------------------------
 const int *
-Tri32DSCS::side_node_ordinals(
-  int ordinal)
+Tri32DSCS::side_node_ordinals ( int ordinal) const
 {
   // define face_ordinal->node_ordinal mappings for each face (ordinal);
   return sideNodeOrdinals_[ordinal];
@@ -397,8 +382,8 @@ Tri32DSCS::side_node_ordinals(
 //-------- determinant -----------------------------------------------------
 //--------------------------------------------------------------------------
 void Tri32DSCS::determinant(
-  SharedMemView<DoubleType**>& coords,
-  SharedMemView<DoubleType**>& areav) {
+  SharedMemView<DoubleType**, DeviceShmem>& coords,
+  SharedMemView<DoubleType**, DeviceShmem>& areav) {
 
   DoubleType coord_mid_face[2][3];
 
@@ -463,8 +448,10 @@ void Tri32DSCS::determinant(
   double *areav,
   double *error)
 {
+  const int npe  = nodesPerElement_;
+  const int nint = numIntPoints_;
   SIERRA_FORTRAN(tri_scs_det)
-    ( &nelem, &nodesPerElement_, &numIntPoints_, coords, areav );
+    ( &nelem, &npe, &nint, coords, areav );
 
   // all is always well; no error checking
   *error = 0;
@@ -474,9 +461,9 @@ void Tri32DSCS::determinant(
 //-------- grad_op ---------------------------------------------------------
 //--------------------------------------------------------------------------
 void Tri32DSCS::grad_op(
-  SharedMemView<DoubleType**>& coords,
-  SharedMemView<DoubleType***>& gradop,
-  SharedMemView<DoubleType***>& deriv) {
+  SharedMemView<DoubleType**, DeviceShmem>& coords,
+  SharedMemView<DoubleType***, DeviceShmem>& gradop,
+  SharedMemView<DoubleType***, DeviceShmem>& deriv) {
   tri_derivative(deriv);
   tri_gradient_operator(coords, gradop, deriv);
 }
@@ -491,13 +478,15 @@ void Tri32DSCS::grad_op(
 {
   int lerr = 0;
 
+  const int npe  = nodesPerElement_;
+  const int nint = numIntPoints_;
   SIERRA_FORTRAN(tri_derivative)
-    ( &numIntPoints_, deriv );
+    ( &nint, deriv );
   
   SIERRA_FORTRAN(tri_gradient_operator)
     ( &nelem,
-      &nodesPerElement_,
-      &numIntPoints_,
+      &npe,
+      &nint,
       deriv,
       coords, gradop, det_j, error, &lerr );
   
@@ -509,9 +498,9 @@ void Tri32DSCS::grad_op(
 //-------- shifted_grad_op -------------------------------------------------
 //--------------------------------------------------------------------------
 void Tri32DSCS::shifted_grad_op(
-  SharedMemView<DoubleType**>& coords,
-  SharedMemView<DoubleType***>& gradop,
-  SharedMemView<DoubleType***>& deriv) {
+  SharedMemView<DoubleType**, DeviceShmem>& coords,
+  SharedMemView<DoubleType***, DeviceShmem>& gradop,
+  SharedMemView<DoubleType***, DeviceShmem>& deriv) {
   tri_derivative(deriv);
   tri_gradient_operator(coords, gradop, deriv);
 }
@@ -526,13 +515,15 @@ void Tri32DSCS::shifted_grad_op(
 {
   int lerr = 0;
 
+  const int npe  = nodesPerElement_;
+  const int nint = numIntPoints_;
   SIERRA_FORTRAN(tri_derivative)
-    ( &numIntPoints_, deriv );
+    ( &nint, deriv );
 
   SIERRA_FORTRAN(tri_gradient_operator)
     ( &nelem,
-      &nodesPerElement_,
-      &numIntPoints_,
+      &npe,
+      &nint,
       deriv,
       coords, gradop, det_j, error, &lerr );
 
@@ -545,14 +536,14 @@ void Tri32DSCS::shifted_grad_op(
 //--------------------------------------------------------------------------
 void Tri32DSCS::face_grad_op(
   int /*face_ordinal*/,
-  SharedMemView<DoubleType**>& coords,
-  SharedMemView<DoubleType***>& gradop)
+  SharedMemView<DoubleType**, DeviceShmem>& coords,
+  SharedMemView<DoubleType***, DeviceShmem>& gradop)
 {
   using traits = AlgTraitsEdge2DTri32D;
 
   constexpr int derivSize = traits::numFaceIp_ * traits::nodesPerElement_ * traits::nDim_;
   DoubleType psi[derivSize];
-  SharedMemView<DoubleType***> deriv(psi, traits::numFaceIp_, traits::nodesPerElement_, traits::nDim_);
+  SharedMemView<DoubleType***, DeviceShmem> deriv(psi, traits::numFaceIp_, traits::nodesPerElement_, traits::nDim_);
   tri_derivative(deriv);
   generic_grad_op<AlgTraitsEdge2DTri32D>(deriv, coords, gradop);
 }
@@ -581,9 +572,10 @@ void Tri32DSCS::face_grad_op(
       SIERRA_FORTRAN(tri_derivative)
         ( &nface, dpsi );
       
+      const int npe  = nodesPerElement_;
       SIERRA_FORTRAN(tri_gradient_operator)
         ( &nface,
-          &nodesPerElement_,
+          &npe,
           &nface,
           dpsi,
           &coords[12*n], grad, &det_j[npf*n+k], error, &lerr );
@@ -603,8 +595,8 @@ void Tri32DSCS::face_grad_op(
 //--------------------------------------------------------------------------
 void Tri32DSCS::shifted_face_grad_op(
   int face_ordinal,
-  SharedMemView<DoubleType**>& coords,
-  SharedMemView<DoubleType***>& gradop)
+  SharedMemView<DoubleType**, DeviceShmem>& coords,
+  SharedMemView<DoubleType***, DeviceShmem>& gradop)
 {
   // same as regular face_grad_op
   face_grad_op(face_ordinal, coords, gradop);
@@ -634,9 +626,10 @@ void Tri32DSCS::shifted_face_grad_op(
       SIERRA_FORTRAN(tri_derivative)
         ( &nface, dpsi );
 
+      const int npe  = nodesPerElement_;
       SIERRA_FORTRAN(tri_gradient_operator)
         ( &nface,
-          &nodesPerElement_,
+          &npe,
           &nface,
           dpsi,
           &coords[12*n], &gradop[k*nelem*6+n*6], &det_j[npf*n+k], error, &lerr );
@@ -652,10 +645,10 @@ void Tri32DSCS::shifted_face_grad_op(
 //-------- gij -------------------------------------------------------------
 //--------------------------------------------------------------------------
 void Tri32DSCS::gij(
-  SharedMemView<DoubleType**>& coords,
-  SharedMemView<DoubleType***>& gupper,
-  SharedMemView<DoubleType***>& glower,
-  SharedMemView<DoubleType***>& deriv) {
+  SharedMemView<DoubleType**, DeviceShmem>& coords,
+  SharedMemView<DoubleType***, DeviceShmem>& gupper,
+  SharedMemView<DoubleType***, DeviceShmem>& glower,
+  SharedMemView<DoubleType***, DeviceShmem>& deriv) {
  
   const int npe  = nodesPerElement_;
   const int nint = numIntPoints_;
@@ -704,9 +697,11 @@ void Tri32DSCS::gij(
   double *glowerij,
   double *deriv)
 {
+  const int npe  = nodesPerElement_;
+  const int nint = numIntPoints_;
   SIERRA_FORTRAN(twod_gij)
-    ( &nodesPerElement_,
-      &numIntPoints_,
+    ( &npe,
+      &nint,
       deriv,
       coords, gupperij, glowerij);
 }
@@ -730,9 +725,9 @@ void Tri32DSCS::Mij(
 }
 //-------------------------------------------------------------------------
 void Tri32DSCS::Mij(
-  SharedMemView<DoubleType**>& coords,
-  SharedMemView<DoubleType***>& metric,
-  SharedMemView<DoubleType***>& deriv)
+  SharedMemView<DoubleType**, DeviceShmem>& coords,
+  SharedMemView<DoubleType***, DeviceShmem>& metric,
+  SharedMemView<DoubleType***, DeviceShmem>& deriv)
 {
   generic_Mij_2d<AlgTraitsTri3_2D>(deriv, coords, metric);
 }
@@ -955,9 +950,10 @@ Tri32DSCS::general_face_grad_op(
   SIERRA_FORTRAN(tri_derivative)
     ( &nface, dpsi );
       
+  const int npe  = nodesPerElement_;
   SIERRA_FORTRAN(tri_gradient_operator)
     ( &nface,
-      &nodesPerElement_,
+      &npe,
       &nface,
       dpsi,
       &coords[0], &gradop[0], &det_j[0], error, &lerr );

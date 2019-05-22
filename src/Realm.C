@@ -33,6 +33,7 @@
 #include <FieldTypeDef.h>
 #include <LinearSystem.h>
 #include <master_element/MasterElement.h>
+#include <master_element/MasterElementFactory.h>
 #include <MaterialPropertys.h>
 #include <NaluParsing.h>
 #include <NonConformalManager.h>
@@ -73,7 +74,6 @@
 
 // actuator line
 #include <Actuator.h>
-#include <ActuatorLinePointDrag.h>
 #ifdef NALU_USES_OPENFAST
 #include <ActuatorLineFAST.h>
 #include <ActuatorDiskFAST.h>
@@ -268,6 +268,9 @@ namespace nalu{
 //--------------------------------------------------------------------------
 Realm::~Realm()
 {
+  ngpFieldMgr_.reset();
+  ngpMesh_.reset();
+
   delete bulkData_;
   delete metaData_;
   delete ioBroker_;
@@ -540,6 +543,9 @@ Realm::initialize()
 
   compute_geometry();
 
+  if ( solutionOptions_->meshMotion_ )
+    meshMotionAlg_->post_compute_geometry();
+
   if ( hasNonConformal_ )
     initialize_non_conformal();
 
@@ -614,10 +620,6 @@ Realm::look_ahead_and_creation(const YAML::Node & node)
     if ( (*foundActuator[0])["actuator"]["type"] ) {
       const std::string ActuatorTypeName = (*foundActuator[0])["actuator"]["type"].as<std::string>() ;
       switch ( ActuatorTypeMap[ActuatorTypeName] ) {
-      case ActuatorType::ActLinePointDrag : {
-	actuator_ =  new ActuatorLinePointDrag(*this, *foundActuator[0]);
-	break;
-      }
       case ActuatorType::ActLineFAST : {
 #ifdef NALU_USES_OPENFAST
 	actuator_ =  new ActuatorLineFAST(*this, *foundActuator[0]);
@@ -1900,7 +1902,10 @@ Realm::pre_timestep_work()
   if ( solutionOptions_->meshMotion_ ) {
 
     meshMotionAlg_->execute( get_current_time() );
+
     compute_geometry();
+
+    meshMotionAlg_->post_compute_geometry();
 
     // and non-conformal algorithm
     if ( hasNonConformal_ )
@@ -2867,7 +2872,7 @@ Realm::register_wall_bc(
 
   // register fields
   MasterElement *meFC = MasterElementRepo::get_surface_master_element(theTopo);
-  const int numScsIp = meFC->numIntPoints_;
+  const int numScsIp = meFC->num_integration_points();
 
   GenericFieldType *exposedAreaVec_
     = &(metaData_->declare_field<GenericFieldType>(static_cast<stk::topology::rank_t>(metaData_->side_rank()), "exposed_area_vector"));
@@ -2910,7 +2915,7 @@ Realm::register_inflow_bc(
 
   // register fields
   MasterElement *meFC = MasterElementRepo::get_surface_master_element(theTopo);
-  const int numScsIp = meFC->numIntPoints_;
+  const int numScsIp = meFC->num_integration_points();
 
   GenericFieldType *exposedAreaVec_
     = &(metaData_->declare_field<GenericFieldType>(static_cast<stk::topology::rank_t>(metaData_->side_rank()), "exposed_area_vector"));
@@ -2952,7 +2957,7 @@ Realm::register_open_bc(
 
   // register fields
   MasterElement *meFC = MasterElementRepo::get_surface_master_element(theTopo);
-  const int numScsIp = meFC->numIntPoints_;
+  const int numScsIp = meFC->num_integration_points();
 
   GenericFieldType *exposedAreaVec_
     = &(metaData_->declare_field<GenericFieldType>(static_cast<stk::topology::rank_t>(metaData_->side_rank()), "exposed_area_vector"));
@@ -2995,7 +3000,7 @@ Realm::register_symmetry_bc(
 
   // register fields
   MasterElement *meFC = MasterElementRepo::get_surface_master_element(theTopo);
-  const int numScsIp = meFC->numIntPoints_;
+  const int numScsIp = meFC->num_integration_points();
 
   GenericFieldType *exposedAreaVec_
     = &(metaData_->declare_field<GenericFieldType>(static_cast<stk::topology::rank_t>(metaData_->side_rank()), "exposed_area_vector"));
@@ -3100,7 +3105,7 @@ Realm::register_non_conformal_bc(
   
   // register fields
   MasterElement *meFC = MasterElementRepo::get_surface_master_element(theTopo);
-  const int numScsIp = meFC->numIntPoints_;
+  const int numScsIp = meFC->num_integration_points();
   
   // exposed area vector
   GenericFieldType *exposedAreaVec_

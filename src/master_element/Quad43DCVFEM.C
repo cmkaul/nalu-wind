@@ -21,18 +21,12 @@ namespace nalu{
 //--------------------------------------------------------------------------
 KOKKOS_FUNCTION
 Quad3DSCS::Quad3DSCS()  
-  : MasterElement(),
+  : MasterElement(Quad3DSCS::scaleToStandardIsoFac_),
     elemThickness_(0.1)
 {
   MasterElement::nDim_ = nDim_;
   MasterElement::nodesPerElement_ = nodesPerElement_;
   MasterElement::numIntPoints_ = numIntPoints_;
-  MasterElement::scaleToStandardIsoFac_ = scaleToStandardIsoFac_;
-
-  // standard integration location
-  MasterElement::intgLoc_.assign(intgLoc_, 8+intgLoc_);    
-  // shifted
-  MasterElement::intgLocShift_.assign(intgLocShift_, 8+intgLocShift_);    
 }
 
 //--------------------------------------------------------------------------
@@ -90,7 +84,7 @@ Quad3DSCS::shifted_shape_fcn(double *shpfc)
 //-------- shape_fcn -------------------------------------------------------
 //--------------------------------------------------------------------------
 void
-Quad3DSCS::shape_fcn(SharedMemView<DoubleType**> &shpfc)
+Quad3DSCS::shape_fcn(SharedMemView<DoubleType**, DeviceShmem> &shpfc)
 {
   quad4_shape_fcn(intgLoc_, shpfc);
 }
@@ -99,7 +93,7 @@ Quad3DSCS::shape_fcn(SharedMemView<DoubleType**> &shpfc)
 //-------- shifted_shape_fcn -----------------------------------------------
 //--------------------------------------------------------------------------
 void
-Quad3DSCS::shifted_shape_fcn(SharedMemView<DoubleType**> &shpfc)
+Quad3DSCS::shifted_shape_fcn(SharedMemView<DoubleType**, DeviceShmem> &shpfc)
 {
   quad4_shape_fcn(intgLocShift_, shpfc);
 }
@@ -110,7 +104,7 @@ Quad3DSCS::shifted_shape_fcn(SharedMemView<DoubleType**> &shpfc)
 void
 Quad3DSCS::quad4_shape_fcn(
   const double *isoParCoord,
-  SharedMemView<DoubleType**> &shape_fcn)
+  SharedMemView<DoubleType**, DeviceShmem> &shape_fcn)
 {
   // -1/2:1/2 isoparametric range
   const DoubleType half = 0.50;

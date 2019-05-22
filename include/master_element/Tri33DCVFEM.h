@@ -42,7 +42,7 @@ public:
   using MasterElement::shape_fcn;
   using MasterElement::shifted_shape_fcn;
 
-  virtual const int * ipNodeMap(int ordinal = 0) const final;
+  KOKKOS_FUNCTION virtual const int *  ipNodeMap(int ordinal = 0) const final;
 
   void determinant(
     const int nelem,
@@ -84,6 +84,14 @@ public:
     const double *isoParCoord,
     const double *coords,
     double *normal);
+
+  virtual const double* integration_locations() const final {
+    return intgLoc_;
+  }
+  virtual const double* integration_location_shift() const final {
+    return intgLocShift_;
+  }
+
 private:
   static constexpr int nDim_ = AlgTraits::nDim_;
   static constexpr int nodesPerElement_ = AlgTraits::nodesPerElement_;

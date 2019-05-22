@@ -18,6 +18,9 @@
 #include <array>
 #include "../ScratchViewsHO.h"
 
+#include <master_element/MasterElementFactory.h>
+
+
 namespace sierra {
 namespace nalu {
 
@@ -103,6 +106,8 @@ public:
 
   virtual Kernel* create_on_device() { return this; }
 
+  virtual void free_on_device() {}
+
   /** Perform pre-timestep work for the computational kernel
    */
   virtual void setup(const TimeIntegrator&) {}
@@ -142,6 +147,15 @@ public:
     SharedMemView<DoubleType*, DeviceShmem>&,
     ScratchViews<double, DeviceTeamHandleType, DeviceShmem>&)
   {}
+
+#ifdef KOKKOS_ENABLE_CUDA
+  KOKKOS_FUNCTION
+  virtual void execute(
+    SharedMemView<DoubleType**, DeviceShmem>&,
+    SharedMemView<DoubleType*, DeviceShmem>&,
+    ScratchViews<DoubleType, DeviceTeamHandleType, DeviceShmem>&)
+  {}
+#endif
 };
 
 /** Kernel that can be transferred to a device
@@ -154,18 +168,28 @@ public:
   KOKKOS_FORCEINLINE_FUNCTION
   NGPKernel() = default;
 
-  virtual ~NGPKernel()
-  {
-    if (deviceCopy_ != nullptr)
-      kokkos_free_on_device(deviceCopy_);
-  }
+  // Implementation note
+  //
+  // The destructor does not free the deviceCopy_ instance. This is done to
+  // eliminate the warnings issued when compiling with nvcc for GPU builds.
+  // Instead the `deviceCopy_` is freed by explicitly calling `free_on_device`
+  // from sierra::nalu::Algorithm::~Algorithm() before freeing the host pointers
+  // stored in `activeKernels_`
+  KOKKOS_FUNCTION virtual ~NGPKernel() = default;
 
   virtual Kernel* create_on_device() final
   {
-    if (deviceCopy_ != nullptr)
-      kokkos_free_on_device(deviceCopy_);
+    free_on_device();
     deviceCopy_ = create_device_expression<T>(*dynamic_cast<T*>(this));
     return deviceCopy_;
+  }
+
+  virtual void free_on_device() final
+  {
+    if (deviceCopy_ != nullptr) {
+      kokkos_free_on_device(deviceCopy_);
+      deviceCopy_ = nullptr;
+    }
   }
 
   T* device_copy() const { return deviceCopy_; }

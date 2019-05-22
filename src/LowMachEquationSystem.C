@@ -72,6 +72,7 @@
 #include <LinearSolvers.h>
 #include <LinearSystem.h>
 #include <master_element/MasterElement.h>
+#include <master_element/MasterElementFactory.h>
 #include <MomentumActuatorSrcNodeSuppAlg.h>
 #include <MomentumBuoyancySrcNodeSuppAlg.h>
 #include <MomentumBoussinesqSrcNodeSuppAlg.h>
@@ -315,20 +316,34 @@ LowMachEquationSystem::register_nodal_fields(
   realm_.augment_property_map(VISCOSITY_ID, viscosity_);
 
   // dual nodal volume (should push up...)
-  dualNodalVolume_ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "dual_nodal_volume"));
+  const int numVolStates = realm_.does_mesh_move() ? realm_.number_of_states() : 1;
+  dualNodalVolume_ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "dual_nodal_volume", numVolStates));
   stk::mesh::put_field_on_mesh(*dualNodalVolume_, *part, nullptr);
+  if (numVolStates > 1) realm_.augment_restart_variable_list("dual_nodal_volume");
 
   // make sure all states are properly populated (restart can handle this)
   if ( numStates > 2 && (!realm_.restarted_simulation() || realm_.support_inconsistent_restart()) ) {
     ScalarFieldType &densityN = density_->field_of_state(stk::mesh::StateN);
     ScalarFieldType &densityNp1 = density_->field_of_state(stk::mesh::StateNP1);
 
-    CopyFieldAlgorithm *theCopyAlg
+    CopyFieldAlgorithm *theCopyAlgDens
       = new CopyFieldAlgorithm(realm_, part,
                                &densityNp1, &densityN,
                                0, 1,
                                stk::topology::NODE_RANK);
-    copyStateAlg_.push_back(theCopyAlg);
+    copyStateAlg_.push_back(theCopyAlgDens);
+
+    if ( numVolStates <= 2 ) return;
+
+    ScalarFieldType &dualNdVolN = dualNodalVolume_->field_of_state(stk::mesh::StateN);
+    ScalarFieldType &dualNdVolNp1 = dualNodalVolume_->field_of_state(stk::mesh::StateNP1);
+
+    CopyFieldAlgorithm *theCopyAlgDlNdVol
+      = new CopyFieldAlgorithm(realm_, part,
+                               &dualNdVolNp1, &dualNdVolN,
+                               0, 1,
+                               stk::topology::NODE_RANK);
+    copyStateAlg_.push_back(theCopyAlgDlNdVol);
   }
 }
 
@@ -346,7 +361,7 @@ LowMachEquationSystem::register_element_fields(
   if ( elementContinuityEqs_ ) {
     // extract master element and get scs points
     MasterElement *meSCS = sierra::nalu::MasterElementRepo::get_surface_master_element(theTopo);
-    const int numScsIp = meSCS->numIntPoints_;
+    const int numScsIp = meSCS->num_integration_points();
     GenericFieldType *massFlowRate = &(meta_data.declare_field<GenericFieldType>(stk::topology::ELEMENT_RANK, "mass_flow_rate_scs"));
     stk::mesh::put_field_on_mesh(*massFlowRate, *part, numScsIp , nullptr);
   }
@@ -492,7 +507,7 @@ LowMachEquationSystem::register_open_bc(
 
   // mdot at open bc; register field
   MasterElement *meFC = sierra::nalu::MasterElementRepo::get_surface_master_element(theTopo);
-  const int numScsBip = meFC->numIntPoints_;
+  const int numScsBip = meFC->num_integration_points();
   GenericFieldType *mdotBip 
     = &(metaData.declare_field<GenericFieldType>(static_cast<stk::topology::rank_t>(metaData.side_rank()), 
                                                  "open_mass_flow_rate"));
@@ -513,6 +528,8 @@ LowMachEquationSystem::register_surface_pp_algorithm(
   stk::mesh::MetaData &meta_data = realm_.meta_data();
   VectorFieldType *pressureForce =  &(meta_data.declare_field<VectorFieldType>(stk::topology::NODE_RANK, "pressure_force"));
   stk::mesh::put_field_on_mesh(*pressureForce, stk::mesh::selectUnion(partVector), meta_data.spatial_dimension(), nullptr);
+  VectorFieldType *viscousForce =  &(meta_data.declare_field<VectorFieldType>(stk::topology::NODE_RANK, "viscous_force"));
+  stk::mesh::put_field_on_mesh(*viscousForce, stk::mesh::selectUnion(partVector), meta_data.spatial_dimension(), nullptr);
   ScalarFieldType *tauWall =  &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "tau_wall"));
   stk::mesh::put_field_on_mesh(*tauWall, stk::mesh::selectUnion(partVector), nullptr);
   ScalarFieldType *yplus =  &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "yplus"));
@@ -520,6 +537,7 @@ LowMachEquationSystem::register_surface_pp_algorithm(
  
   // force output for these variables
   realm_.augment_output_variable_list(pressureForce->name());
+  realm_.augment_output_variable_list(viscousForce->name());
   realm_.augment_output_variable_list(tauWall->name());
   realm_.augment_output_variable_list(yplus->name());
 
@@ -1894,7 +1912,7 @@ MomentumEquationSystem::register_wall_bc(
 
     // integration point; size it based on number of boundary integration points
     MasterElement *meFC = sierra::nalu::MasterElementRepo::get_surface_master_element(partTopo);
-    const int numScsBip = meFC->numIntPoints_;
+    const int numScsBip = meFC->num_integration_points();
 
     stk::topology::rank_t sideRank = static_cast<stk::topology::rank_t>(meta_data.side_rank());
     GenericFieldType *wallFrictionVelocityBip 
@@ -2247,7 +2265,7 @@ MomentumEquationSystem::register_non_conformal_bc(
 
   // mdot at nc bc; register field; require topo and num ips
   MasterElement *meFC = sierra::nalu::MasterElementRepo::get_surface_master_element(theTopo);
-  const int numScsBip = meFC->numIntPoints_;
+  const int numScsBip = meFC->num_integration_points();
 
   stk::topology::rank_t sideRank = static_cast<stk::topology::rank_t>(meta_data.side_rank());
   GenericFieldType *mdotBip =
@@ -2535,7 +2553,7 @@ void
 MomentumEquationSystem::save_diagonal_term(
   unsigned nEntities,
   const ngp::Mesh::ConnectedNodes& entities,
-  const SharedMemView<const double**>& lhs)
+  const SharedMemView<const double**,DeviceShmem>& lhs)
 {
 #ifndef KOKKOS_ENABLE_CUDA
   auto& bulk = realm_.bulk_data();
@@ -3497,7 +3515,7 @@ ContinuityEquationSystem::register_non_conformal_bc(
 
   // mdot at nc bc; register field; require topo and num ips
   MasterElement *meFC = sierra::nalu::MasterElementRepo::get_surface_master_element(theTopo);
-  const int numScsBip = meFC->numIntPoints_;
+  const int numScsBip = meFC->num_integration_points();
   
   stk::topology::rank_t sideRank = static_cast<stk::topology::rank_t>(meta_data.side_rank());
   GenericFieldType *mdotBip =
