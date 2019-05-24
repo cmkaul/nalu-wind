@@ -39,7 +39,7 @@ EnthalpyABLDampSrcNodeSuppAlg::EnthalpyABLDampSrcNodeSuppAlg(
 
   // Get the temperature field
   ScalarFieldType* temperature_ = meta.get_field<ScalarFieldType>(
-    stk::topology::NODE_RANK, "dual_nodal_volume");
+    stk::topology::NODE_RANK, "temperature");
   //set acces to the correct update state
   temperatureNP1_ = &(temperature_->field_of_state(stk::mesh::StateNP1));
   // Get the specific heat
