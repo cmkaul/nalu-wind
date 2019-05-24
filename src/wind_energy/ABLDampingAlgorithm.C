@@ -291,7 +291,7 @@ ABLDampingAlgorithm::compute_momentum_target_profile()
   
 
   if (momSrcType_ == MEAN_PROFILE) {
-    for (int ih=0; ih < nInputHeights; ih++) {
+    for (int ih=0; ih < nAblHeights; ih++) {
       bdyLayerStats->velocity(ablHeights[ih], UDamp[ih].data());
     }
   }else if( momSrcType_ == GIVEN_PROFILE){
@@ -364,8 +364,8 @@ ABLDampingAlgorithm::compute_temperature_target_profile()
   timeInterpTemp.resize(nInputHeights);
 
   if (tempSrcType_ == MEAN_PROFILE) {
-    for (size_t ih=0; ih < tempHeights_.size(); ih++) {
-      bdyLayerStats->temperature(tempHeights_[ih], &TDamp[ih]);
+    for (size_t ih=0; ih < nAblHeights; ih++) {
+      bdyLayerStats->temperature(ablHeights[ih], &TDamp[ih]);
     }
   }else if (tempSrcType_ == GIVEN_PROFILE){
     //! First interp in time

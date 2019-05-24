@@ -52,6 +52,18 @@
         "atomic": "c",
         "chrono": "c",
         "ratio": "c",
-        "thread": "c"
+        "thread": "c",
+        "SolutionOptions.C": "cpp",
+        "InputOutputRealm.C": "cpp",
+        "Realm.C": "cpp",
+        "MomentumBuoyancySrcNodeSuppAlg.C": "cpp",
+        "ABLDampingAlgorithm.C": "cpp",
+        "MomentumABLDampSrcNodeSuppAlg.C": "cpp",
+        "EnthalpyABLDampSrcNodeSuppAlg.C": "cpp",
+        "LinearSystem.C": "cpp",
+        "MomentumBoussinesqSrcNodeSuppAlg.C": "cpp",
+        "BdyLayerStatistics.C": "cpp",
+        "MomentumABLForceSrcNodeSuppAlg.C": "cpp",
+        "ABLForcingAlgorithm.C": "cpp"
     }
 }
