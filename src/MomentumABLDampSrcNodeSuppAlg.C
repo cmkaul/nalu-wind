@@ -72,7 +72,7 @@ MomentumABLDampSrcNodeSuppAlg::node_execute(
       
   }
   ThrowAssertMsg(std::isfinite(rhs[2]), "Inf or NAN rhs before damp");
-  rhs[2] -= dualVol * rhoNP1 * (dampVel[i]);
+  rhs[2] -= dualVol * rhoNP1 * (dampVel[2]);
   ThrowAssertMsg(std::isfinite(rhs[2]), "Inf or NAN rhs after damp");
 
   // If below the minimum damping heihght, return without doing anything
