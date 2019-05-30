@@ -66,14 +66,15 @@ MomentumABLDampSrcNodeSuppAlg::node_execute(
   const double* dampVel = ablDamp_->UDamp[ih].data();
 
   for (int i = 0; i < 2; i++) {
-    ThrowAssertMsg(std::isfinite(rhs[i]), "Inf or NAN rhs before damp");
+    // ThrowAssertMsg(std::isfinite(rhs[i]), "Inf or NAN rhs before damp");
     rhs[i] += dualVol * rhoNP1* dampCoeff * (dampVel[i]-vel[i]);
-    ThrowAssertMsg(std::isfinite(rhs[i]), "Inf or NAN rhs after damp");
+    // ThrowAssertMsg(std::isfinite(rhs[i]), "Inf or NAN rhs after damp");
       
   }
-  ThrowAssertMsg(std::isfinite(rhs[2]), "Inf or NAN rhs before damp");
+  // ThrowAssertMsg(std::isfinite(rhs[2]), "Inf or NAN rhs before damp");
+  // Note the code below only works because dt=1
   rhs[2] -= dualVol * rhoNP1 * (dampVel[2]);
-  ThrowAssertMsg(std::isfinite(rhs[2]), "Inf or NAN rhs after damp");
+  // ThrowAssertMsg(std::isfinite(rhs[2]), "Inf or NAN rhs after damp");
 
   // If below the minimum damping heihght, return without doing anything
   /*

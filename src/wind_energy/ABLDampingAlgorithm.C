@@ -84,9 +84,9 @@ ABLDampingAlgorithm::load_momentum_info(const YAML::Node& node)
     momSrcType_ = ABLDampingAlgorithm::GIVEN_PROFILE;
   } else if (mom_type == "mean_profile") {
     momSrcType_ = ABLDampingAlgorithm::MEAN_PROFILE;
-    throw std::runtime_error(
-      "ABLDampingAlgorithm: mean_profile type specification for momentum. "
-      "This type is not ready yet.");
+    // throw std::runtime_error(
+    //   "ABLDampingAlgorithm: mean_profile type specification for momentum. "
+    //   "This type is not ready yet.");
   } else {
     throw std::runtime_error(
       "ABLDampingAlgorithm: Invalid type specification for momentum. ");
@@ -124,9 +124,9 @@ ABLDampingAlgorithm::load_temperature_info(const YAML::Node& node)
     tempSrcType_ = ABLDampingAlgorithm::GIVEN_PROFILE;
   } else if (temp_type == "mean_profile") {
     tempSrcType_ = ABLDampingAlgorithm::MEAN_PROFILE;
-    throw std::runtime_error(
-      "ABLDampingAlgorithm: mean_profile type specification for temperature. "
-      "This type is not ready yet.");
+    // throw std::runtime_error(
+    //   "ABLDampingAlgorithm: mean_profile type specification for temperature. "
+    //   "This type is not ready yet.");
   } else {
     throw std::runtime_error(
       "ABLDampingAlgorithm: Invalid type specification for temperature. ");
