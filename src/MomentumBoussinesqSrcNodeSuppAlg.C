@@ -43,7 +43,6 @@ MomentumBoussinesqSrcNodeSuppAlg::MomentumBoussinesqSrcNodeSuppAlg(
   stk::mesh::MetaData & meta_data = realm_.meta_data();
   temperature_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "temperature");
   dualNodalVolume_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "dual_nodal_volume");
-  heightIndex_ = meta_data.get_field<ScalarIntFieldType>(stk::topology::NODE_RANK, "bdy_layer_height_index_field");
   // extract user parameters from solution options
   tRef_ = realm_.solutionOptions_->referenceTemperature_;
   rhoRef_ = realm_.solutionOptions_->referenceDensity_;
@@ -75,13 +74,11 @@ MomentumBoussinesqSrcNodeSuppAlg::node_execute(
   const double temperature = *stk::mesh::field_data(*temperature_, node );
   const double dualVolume = *stk::mesh::field_data(*dualNodalVolume_, node );
   const double fac = -rhoRef_*beta_*(temperature - tRef_)*dualVolume;
-  const int ih = *stk::mesh::field_data(*heightIndex_, node);
   
-  if (ih >0){
-    for ( int i = 0; i < nDim_; ++i ) {
-      rhs[i] += fac*gravity_[i];
-    }
+  for ( int i = 0; i < nDim_; ++i ) {
+    rhs[i] += fac*gravity_[i];
   }
+  
 }
 
 } // namespace nalu
