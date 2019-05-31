@@ -42,8 +42,8 @@ public:
   ScalarFieldType *raTemperature_;
   std::string raName_;
   ScalarFieldType *dualNodalVolume_;
-  ScalarIntFieldType* heightIndex_;
-  
+ 
+
   double rhoRef_;
   double beta_;
   int nDim_;
