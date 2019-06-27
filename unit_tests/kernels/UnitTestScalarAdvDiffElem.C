@@ -8,6 +8,7 @@
 #include "kernels/UnitTestKernelUtils.h"
 #include "UnitTestUtils.h"
 #include "UnitTestHelperObjects.h"
+#include "UnitTestTpetraHelperObjects.h"
 
 #include "kernel/ScalarAdvDiffElemKernel.h"
 
@@ -30,16 +31,12 @@ namespace advection_diffusion {
   static constexpr double rhs[8] = {
     -0.0000023386569023, -0.0000259997889658, 0.0000269085331417, 0.0000040683119211, 0.0000089806982989, 0.0000318761782412, 0.0000172325914019, -0.0000607278671367, };
 
-
-
 } // advection_diffusion
 } // hex8_golds
 } // anonymous namespace
 
-#ifndef KOKKOS_ENABLE_CUDA
-
 /// Scalar advection/diffusion (will use mixture fraction as scalar)
-TEST_F(MixtureFractionKernelHex8Mesh, advection_diffusion)
+TEST_F(MixtureFractionKernelHex8Mesh, NGP_advection_diffusion)
 {
   // FIXME: only test on one core
   if (stk::parallel_machine_size(MPI_COMM_WORLD) > 1) 
@@ -63,17 +60,49 @@ TEST_F(MixtureFractionKernelHex8Mesh, advection_diffusion)
   // Register the kernel for execution
   helperObjs.assembleElemSolverAlg->activeKernels_.push_back(advKernel.get());
 
-  // Populate LHS and RHS
-  helperObjs.assembleElemSolverAlg->execute();
+  // Populate LHS and RHS and copy back to host
+  helperObjs.execute();
 
-  EXPECT_EQ(helperObjs.linsys->lhs_.extent(0), 8u);
-  EXPECT_EQ(helperObjs.linsys->lhs_.extent(1), 8u);
-  EXPECT_EQ(helperObjs.linsys->rhs_.extent(0), 8u);
+  EXPECT_EQ(helperObjs.linsys->hostlhs_.extent(0), 8u);
+  EXPECT_EQ(helperObjs.linsys->hostlhs_.extent(1), 8u);
+  EXPECT_EQ(helperObjs.linsys->hostrhs_.extent(0), 8u);
 
   namespace gold_values = hex8_golds::advection_diffusion;
-  unit_test_kernel_utils::expect_all_near(helperObjs.linsys->rhs_, gold_values::rhs);
-  unit_test_kernel_utils::expect_all_near<8>(helperObjs.linsys->lhs_, gold_values::lhs);
+  unit_test_kernel_utils::expect_all_near(helperObjs.linsys->hostrhs_, gold_values::rhs);
+  unit_test_kernel_utils::expect_all_near<8>(helperObjs.linsys->hostlhs_, gold_values::lhs);
 }
 
-#endif
+TEST_F(MixtureFractionKernelHex8Mesh, NGP_advection_diffusion_tpetra)
+{
+  // FIXME: only test on one core
+  if (stk::parallel_machine_size(MPI_COMM_WORLD) > 1) 
+    return;
+
+  fill_mesh_and_init_fields(true);
+
+  // Setup solution options for default advection kernel
+  solnOpts_.meshMotion_ = false;
+  solnOpts_.meshDeformation_ = false;
+  solnOpts_.externalMeshDeformation_ = false;
+
+  int numDof = 1;
+  unit_test_utils::TpetraHelperObjectsElem helperObjs(bulk_, stk::topology::HEX_8, numDof, partVec_[0]);
+
+  helperObjs.realm.naluGlobalId_ = naluGlobalId_;
+  helperObjs.realm.set_global_id();
+
+  // Initialize the kernel
+  std::unique_ptr<sierra::nalu::Kernel> advKernel(
+    new sierra::nalu::ScalarAdvDiffElemKernel<sierra::nalu::AlgTraitsHex8>(
+     bulk_, solnOpts_, mixFraction_, viscosity_, helperObjs.assembleElemSolverAlg->dataNeededByKernels_));
+
+  // Register the kernel for execution
+  helperObjs.assembleElemSolverAlg->activeKernels_.push_back(advKernel.get());
+
+  // Populate LHS and RHS
+  helperObjs.execute();
+
+  namespace gold_values = hex8_golds::advection_diffusion;
+  helperObjs.check_against_gold_values(8, gold_values::lhs, gold_values::rhs);
+}
 

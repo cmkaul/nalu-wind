@@ -1,6 +1,5 @@
 add_sources(GlobalSourceList
    ABLProfileFunction.C
-   ActuatorLinePointDrag.C
    Actuator.C
    Algorithm.C
    AlgorithmDriver.C
@@ -15,6 +14,7 @@ add_sources(GlobalSourceList
    AssembleElemSolverAlgorithmHO.C
    AssembleFaceElemSolverAlgorithm.C
    AssembleFaceScalarFluxBCSolverAlgorithm.C
+   AssembleEdgeSolverAlgorithm.C
    AssembleHeatCondIrradWallSolverAlgorithm.C
    AssembleHeatCondWallSolverAlgorithm.C
    AssembleMomentumEdgeABLWallFunctionSolverAlgorithm.C
@@ -41,6 +41,7 @@ add_sources(GlobalSourceList
    AssembleNodalGradUElemAlgorithm.C
    AssembleNodalGradUNonConformalAlgorithm.C
    AssembleNodeSolverAlgorithm.C
+   AssembleNGPNodeSolverAlgorithm.C
    AssemblePNGBoundarySolverAlgorithm.C
    AssemblePNGElemSolverAlgorithm.C
    AssemblePNGNonConformalSolverAlgorithm.C
@@ -167,6 +168,7 @@ add_sources(GlobalSourceList
    SurfaceForceAndMomentWallFunctionAlgorithm.C
    TimeIntegrator.C
    TpetraLinearSystem.C
+   TpetraLinearSystemHelpers.C
    TurbKineticEnergyEquationSystem.C
    TurbKineticEnergyKsgsBuoyantElemSuppAlg.C
    TurbKineticEnergyKsgsNodeSourceSuppAlg.C
@@ -216,6 +218,8 @@ endif()
 
 add_subdirectory(element_promotion)
 add_subdirectory(kernel)
+add_subdirectory(edge_kernels)
+add_subdirectory(node_kernels)
 add_subdirectory(master_element)
 add_subdirectory(mesh_motion)
 add_subdirectory(nso)

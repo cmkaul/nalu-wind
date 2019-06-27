@@ -390,8 +390,8 @@ HypreLinearSystem::sumInto(
   HypreIntType numRows = n_obj * numDof_;
   const HypreIntType bufSize = idBuffer_.size();
 
-  ThrowAssertMsg(lhs.is_contiguous(), "LHS assumed contiguous");
-  ThrowAssertMsg(rhs.is_contiguous(), "RHS assumed contiguous");
+  ThrowAssertMsg(lhs.span_is_contiguous(), "LHS assumed contiguous");
+  ThrowAssertMsg(rhs.span_is_contiguous(), "RHS assumed contiguous");
   if (bufSize < numRows) idBuffer_.resize(numRows);
 
   for (size_t in=0; in < n_obj; in++) {
@@ -442,8 +442,8 @@ HypreLinearSystem::sumInto(
   HypreIntType numRows = n_obj * numDof_;
   const HypreIntType bufSize = idBuffer_.size();
 
-  ThrowAssertMsg(lhs.is_contiguous(), "LHS assumed contiguous");
-  ThrowAssertMsg(rhs.is_contiguous(), "RHS assumed contiguous");
+  ThrowAssertMsg(lhs.span_is_contiguous(), "LHS assumed contiguous");
+  ThrowAssertMsg(rhs.span_is_contiguous(), "RHS assumed contiguous");
   if (bufSize < numRows) idBuffer_.resize(numRows);
 
   for (size_t in=0; in < n_obj; in++) {
@@ -607,8 +607,9 @@ HypreLinearSystem::solve(stk::mesh::FieldBase* linearSolutionField)
     linearSolver_);
 
   if (solver->getConfig()->getWriteMatrixFiles()) {
-    const std::string matFile = eqSysName_ + ".IJM.mat";
-    const std::string rhsFile = eqSysName_ + ".IJV.rhs";
+    std::string writeCounter = std::to_string(eqSys_->linsysWriteCounter_);
+    const std::string matFile = eqSysName_ + ".IJM." + writeCounter + ".mat";
+    const std::string rhsFile = eqSysName_ + ".IJV." + writeCounter + ".rhs";
     HYPRE_IJMatrixPrint(mat_, matFile.c_str());
     HYPRE_IJVectorPrint(rhs_, rhsFile.c_str());
   }
@@ -622,8 +623,10 @@ HypreLinearSystem::solve(stk::mesh::FieldBase* linearSolutionField)
   status = solver->solve(iters, finalResidNorm, realm_.isFinalOuterIter_);
 
   if (solver->getConfig()->getWriteMatrixFiles()) {
-    const std::string slnFile = eqSysName_ + ".IJV.sln";
+    std::string writeCounter = std::to_string(eqSys_->linsysWriteCounter_);
+    const std::string slnFile = eqSysName_ + ".IJV." + writeCounter + ".sln";
     HYPRE_IJVectorPrint(sln_, slnFile.c_str());
+    ++eqSys_->linsysWriteCounter_;
   }
 
   double norm2 = copy_hypre_to_stk(linearSolutionField);

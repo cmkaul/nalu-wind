@@ -9,27 +9,33 @@
 #ifndef PecletFunction_h
 #define PecletFunction_h
 
+#include "KokkosInterface.h"
+
 namespace sierra{
 namespace nalu{
 
+/** Non-templated empty base class for storing pointers to templated instances
+ */
+class PecletFunctionBase
+{};
+
 template<typename T>
-class PecletFunction
+class PecletFunction : public PecletFunctionBase
 {
 public:
-
-  PecletFunction();
-  virtual ~PecletFunction();
-  virtual T execute(const T pecletNumber) = 0;
-  /*virtual void update_values(Realm *realm) = 0;*/
+  KOKKOS_FUNCTION PecletFunction() = default;
+  KOKKOS_FUNCTION virtual ~PecletFunction() = default;
+  KOKKOS_FUNCTION virtual T execute(const T pecletNumber) = 0;
 };
 
 template<typename T>
 class ClassicPecletFunction : public PecletFunction<T>
 {
 public:
-  ClassicPecletFunction(T A, T hf);
-  virtual ~ClassicPecletFunction();
-  T execute(const T pecletNumber);
+  KOKKOS_FUNCTION ClassicPecletFunction(T A, T hf);
+  KOKKOS_FUNCTION virtual ~ClassicPecletFunction() = default;
+  KOKKOS_FUNCTION T execute(const T pecletNumber);
+
   T A_;
   T hf_;
 };
@@ -38,9 +44,10 @@ template<typename T>
 class TanhFunction : public PecletFunction<T>
 {
 public:
-  TanhFunction( T c1, T c2 );
-  virtual ~TanhFunction();
-  T execute(const T indVar);
+  KOKKOS_FUNCTION TanhFunction( T c1, T c2 );
+  KOKKOS_FUNCTION virtual ~TanhFunction() = default;
+  KOKKOS_FUNCTION T execute(const T indVar);
+
   T c1_; // peclet number at which transition occurs
   T c2_; // width of the transtion
 };

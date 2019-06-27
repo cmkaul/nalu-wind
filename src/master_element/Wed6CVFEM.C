@@ -16,8 +16,30 @@
 namespace sierra {
 namespace nalu {
 
+template<typename ViewType>
+KOKKOS_FUNCTION void wed_shape_fcn(
+  const int  npts,
+  const double *isoParCoord,
+  ViewType& shape_fcn)
+{
+  for (int j = 0; j < npts; ++j ) {
+    int k    = 3 * j;
+    double r    = isoParCoord[k];
+    double s    = isoParCoord[k + 1];
+    double t    = 1.0 - r - s;
+    double xi   = isoParCoord[k + 2];
+    shape_fcn(j, 0) = 0.5 * t * (1.0 - xi);
+    shape_fcn(j, 1) = 0.5 * r * (1.0 - xi);
+    shape_fcn(j, 2) = 0.5 * s * (1.0 - xi);
+    shape_fcn(j, 3) = 0.5 * t * (1.0 + xi);
+    shape_fcn(j, 4) = 0.5 * r * (1.0 + xi);
+    shape_fcn(j, 5) = 0.5 * s * (1.0 + xi);
+  }
+}
+
 //-------- wed_deriv -------------------------------------------------------
 template <typename DerivType>
+KOKKOS_FUNCTION
 void wed_deriv(
   const int npts,
   const double* intgLoc,
@@ -81,8 +103,8 @@ WedSCV::ipNodeMap(
 }
 
 void WedSCV::determinant(
-  SharedMemView<DoubleType**>& coordel,
-  SharedMemView<DoubleType*>& volume)
+  SharedMemView<DoubleType**, DeviceShmem>& coordel,
+  SharedMemView<DoubleType*, DeviceShmem>& volume)
 {
   const int wedSubControlNodeTable[6][8] = {
     { 0, 15, 16, 6, 8, 19, 20, 9    },
@@ -191,9 +213,9 @@ void WedSCV::determinant(
 //-------- grad_op ---------------------------------------------------------
 //--------------------------------------------------------------------------
 void WedSCV::grad_op(
-  SharedMemView<DoubleType**>& coords,
-  SharedMemView<DoubleType***>& gradop,
-  SharedMemView<DoubleType***>& deriv)
+  SharedMemView<DoubleType**, DeviceShmem>& coords,
+  SharedMemView<DoubleType***, DeviceShmem>& gradop,
+  SharedMemView<DoubleType***, DeviceShmem>& deriv)
 {
   wed_deriv(numIntPoints_, &intgLoc_[0], deriv);
   generic_grad_op<AlgTraitsWed6>(deriv, coords, gradop);
@@ -203,9 +225,9 @@ void WedSCV::grad_op(
 //-------- shifted_grad_op -------------------------------------------------
 //--------------------------------------------------------------------------
 void WedSCV::shifted_grad_op(
-  SharedMemView<DoubleType**>& coords,
-  SharedMemView<DoubleType***>& gradop,
-  SharedMemView<DoubleType***>& deriv)
+  SharedMemView<DoubleType**, DeviceShmem>& coords,
+  SharedMemView<DoubleType***, DeviceShmem>& gradop,
+  SharedMemView<DoubleType***, DeviceShmem>& deriv)
 {
   wed_deriv(numIntPoints_, &intgLocShift_[0], deriv);
   generic_grad_op<AlgTraitsWed6>(deriv, coords, gradop);
@@ -229,6 +251,19 @@ void WedSCV::determinant(
       volume, error, &lerr );
 }
 
+KOKKOS_FUNCTION void
+WedSCV::shape_fcn(SharedMemView<DoubleType**, DeviceShmem> &shpfc)
+{
+  wed_shape_fcn(numIntPoints_, &intgLoc_[0], shpfc);
+}
+
+KOKKOS_FUNCTION void
+WedSCV::shifted_shape_fcn(
+  SharedMemView<DoubleType**, DeviceShmem> &shpfc)
+{
+  wed_shape_fcn(numIntPoints_, &intgLocShift_[0], shpfc);
+}
+
 //--------------------------------------------------------------------------
 //-------- shape_fcn -------------------------------------------------------
 //--------------------------------------------------------------------------
@@ -246,7 +281,6 @@ WedSCV::shifted_shape_fcn(double *shpfc)
 {
   wedge_shape_fcn(numIntPoints_, &intgLocShift_[0], shpfc);
 }
-
 
 //--------------------------------------------------------------------------
 //-------- wedge_shape_fcn -------------------------------------------------
@@ -285,9 +319,9 @@ void WedSCV::Mij(
 }
 //-------------------------------------------------------------------------
 void WedSCV::Mij(
-  SharedMemView<DoubleType**>& coords,
-  SharedMemView<DoubleType***>& metric,
-  SharedMemView<DoubleType***>& deriv)
+  SharedMemView<DoubleType**, DeviceShmem>& coords,
+  SharedMemView<DoubleType***, DeviceShmem>& metric,
+  SharedMemView<DoubleType***, DeviceShmem>& deriv)
 {
   generic_Mij_3d<AlgTraitsWed6>(deriv, coords, metric);
 }
@@ -344,8 +378,8 @@ WedSCS::side_node_ordinals ( int ordinal) const
 }
 
 void WedSCS::determinant(
-  SharedMemView<DoubleType**>& coordel,
-  SharedMemView<DoubleType**>& areav)
+  SharedMemView<DoubleType**, DeviceShmem>& coordel,
+  SharedMemView<DoubleType**, DeviceShmem>& areav)
 {
   const int wedEdgeFacetTable[9][4] = {
     { 6 ,  9 ,  20 ,  16   }, // sc face 1 -- points from 1 -> 2
@@ -470,9 +504,9 @@ void WedSCS::determinant(
 }
 
 void WedSCS::grad_op(
-  SharedMemView<DoubleType**>& coords,
-  SharedMemView<DoubleType***>& gradop,
-  SharedMemView<DoubleType***>& deriv)
+  SharedMemView<DoubleType**, DeviceShmem>& coords,
+  SharedMemView<DoubleType***, DeviceShmem>& gradop,
+  SharedMemView<DoubleType***, DeviceShmem>& deriv)
 {
   wed_deriv(numIntPoints_, &intgLoc_[0], deriv);
 
@@ -480,9 +514,9 @@ void WedSCS::grad_op(
 }
 
 void WedSCS::shifted_grad_op(
-  SharedMemView<DoubleType**>& coords,
-  SharedMemView<DoubleType***>& gradop,
-  SharedMemView<DoubleType***>& deriv)
+  SharedMemView<DoubleType**, DeviceShmem>& coords,
+  SharedMemView<DoubleType***, DeviceShmem>& gradop,
+  SharedMemView<DoubleType***, DeviceShmem>& deriv)
 {
   wed_deriv(numIntPoints_, &intgLocShift_[0], deriv);
 
@@ -639,8 +673,8 @@ WedSCS::face_grad_op(
 //--------------------------------------------------------------------------
 void WedSCS::face_grad_op(
   int face_ordinal,
-  SharedMemView<DoubleType**>& coords,
-  SharedMemView<DoubleType***>& gradop)
+  SharedMemView<DoubleType**, DeviceShmem>& coords,
+  SharedMemView<DoubleType***, DeviceShmem>& gradop)
 {
   using tri_traits = AlgTraitsTri3Wed6;
   using quad_traits = AlgTraitsQuad4Wed6;
@@ -649,7 +683,7 @@ void WedSCS::face_grad_op(
   constexpr int maxDerivSize = quad_traits::numFaceIp_ *  quad_traits::nodesPerElement_ * dim;
   NALU_ALIGNED DoubleType psi[maxDerivSize];
   const int numFaceIps = (face_ordinal < 3) ? quad_traits::numFaceIp_ : tri_traits::numFaceIp_;
-  SharedMemView<DoubleType***> deriv(psi, numFaceIps, AlgTraitsWed6::nodesPerElement_, dim);
+  SharedMemView<DoubleType***, DeviceShmem> deriv(psi, numFaceIps, AlgTraitsWed6::nodesPerElement_, dim);
 
   const int offset = quad_traits::numFaceIp_ * face_ordinal;
   wed_deriv(numFaceIps, &intgExpFace_[dim * offset], deriv);
@@ -660,8 +694,8 @@ void WedSCS::face_grad_op(
 //--------------------------------------------------------------------------
 void WedSCS::shifted_face_grad_op(
   int face_ordinal,
-  SharedMemView<DoubleType**>& coords,
-  SharedMemView<DoubleType***>& gradop)
+  SharedMemView<DoubleType**, DeviceShmem>& coords,
+  SharedMemView<DoubleType***, DeviceShmem>& gradop)
 {
   using tri_traits = AlgTraitsTri3Wed6;
   using quad_traits = AlgTraitsQuad4Wed6;
@@ -670,7 +704,7 @@ void WedSCS::shifted_face_grad_op(
   constexpr int maxDerivSize = quad_traits::numFaceIp_ *  quad_traits::nodesPerElement_ * dim;
   NALU_ALIGNED DoubleType psi[maxDerivSize];
   const int numFaceIps = (face_ordinal < 3) ? quad_traits::numFaceIp_ : tri_traits::numFaceIp_;
-  SharedMemView<DoubleType***> deriv(psi, numFaceIps, AlgTraitsWed6::nodesPerElement_, dim);
+  SharedMemView<DoubleType***, DeviceShmem> deriv(psi, numFaceIps, AlgTraitsWed6::nodesPerElement_, dim);
 
   const int offset = sideOffset_[face_ordinal];
   wed_deriv(numFaceIps, &intgExpFaceShift_[dim * offset], deriv);
@@ -718,10 +752,10 @@ WedSCS::shifted_face_grad_op(
 
 
 void WedSCS::gij(
-  SharedMemView<DoubleType**>& coords,
-  SharedMemView<DoubleType***>& gupper,
-  SharedMemView<DoubleType***>& glower,
-  SharedMemView<DoubleType***>& deriv)
+  SharedMemView<DoubleType**, DeviceShmem>& coords,
+  SharedMemView<DoubleType***, DeviceShmem>& gupper,
+  SharedMemView<DoubleType***, DeviceShmem>& glower,
+  SharedMemView<DoubleType***, DeviceShmem>& deriv)
 {
   generic_gij_3d<AlgTraitsWed6>(deriv, coords, gupper, glower);
 }
@@ -756,9 +790,9 @@ void WedSCS::Mij(
 }
 //-------------------------------------------------------------------------
 void WedSCS::Mij(
-  SharedMemView<DoubleType**>& coords,
-  SharedMemView<DoubleType***>& metric,
-  SharedMemView<DoubleType***>& deriv)
+  SharedMemView<DoubleType**, DeviceShmem>& coords,
+  SharedMemView<DoubleType***, DeviceShmem>& metric,
+  SharedMemView<DoubleType***, DeviceShmem>& deriv)
 {
   generic_Mij_3d<AlgTraitsWed6>(deriv, coords, metric);
 }
@@ -803,6 +837,19 @@ WedSCS::opposingFace(
   const int node)
 {
   return oppFace_[ordinal*4+node];
+}
+
+KOKKOS_FUNCTION void
+WedSCS::shape_fcn(SharedMemView<DoubleType**, DeviceShmem> &shpfc)
+{
+  wed_shape_fcn(numIntPoints_, &intgLoc_[0], shpfc);
+}
+
+KOKKOS_FUNCTION void
+WedSCS::shifted_shape_fcn(
+  SharedMemView<DoubleType**, DeviceShmem> &shpfc)
+{
+  wed_shape_fcn(numIntPoints_, &intgLocShift_[0], shpfc);
 }
 
 //--------------------------------------------------------------------------

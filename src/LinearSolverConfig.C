@@ -56,7 +56,7 @@ TpetraLinearSolverConfig::load(const YAML::Node & node)
   if (output_level > 0)
   {
     params_->set("Verbosity", Belos::Errors + Belos::Warnings + Belos::StatusTestDetails);
-    params_->set("Output Style",Belos::Brief); 
+    params_->set("Output Style",Belos::Brief);
   }
 
   params_->set("Output Frequency", output_level);
@@ -92,17 +92,19 @@ TpetraLinearSolverConfig::load(const YAML::Node & node)
   else if (precond_ == "muelu") {
     muelu_xml_file_ = std::string("milestone.xml");
     get_if_present(node, "muelu_xml_file_name", muelu_xml_file_, muelu_xml_file_);
+    paramsPrecond_->set("xml parameter file", muelu_xml_file_);
     useMueLu_ = true;
   }
   else {
     throw std::runtime_error("invalid linear solver preconditioner specified ");
   }
 
-  get_if_present(node, "write_matrix_files", writeMatrixFiles_, writeMatrixFiles_);
-  get_if_present(node, "summarize_muelu_timer", summarizeMueluTimer_, summarizeMueluTimer_);
+  get_if_present(node, "write_matrix_files",       writeMatrixFiles_,        writeMatrixFiles_);
+  get_if_present(node, "summarize_muelu_timer",    summarizeMueluTimer_,     summarizeMueluTimer_);
 
   get_if_present(node, "recompute_preconditioner", recomputePreconditioner_, recomputePreconditioner_);
   get_if_present(node, "reuse_preconditioner",     reusePreconditioner_,     reusePreconditioner_);
+  get_if_present(node, "segregated_solver",        useSegregatedSolver_,     useSegregatedSolver_);
 
 }
 

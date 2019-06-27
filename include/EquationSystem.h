@@ -13,6 +13,8 @@
 #include "NaluParsing.h"
 #include "Realm.h"
 #include "PecletFunction.h"
+#include "NGPInstance.h"
+#include "SimdInterface.h"
 
 #include <stk_ngp/Ngp.hpp>
 
@@ -222,6 +224,11 @@ public:
   template<typename T>
   PecletFunction<T>* create_peclet_function( const std::string dofName);
 
+  /** Create and return an instance of PecletFunction on device for use with Kernel
+   */
+  template<typename T = DoubleType>
+  PecletFunction<T>* ngp_create_peclet_function(const std::string& dofName);
+
   virtual void load(const YAML::Node & node)
   {
     get_required(node, "name", userSuppliedName_);
@@ -249,6 +256,9 @@ public:
 
   // driver that holds all solver algorithms
   SolverAlgorithmDriver *solverAlgDriver_;
+
+  //! Track NGP instances of PecletFunction
+  std::vector<PecletFunctionBase*> ngpPecletFunctions_;
 
   double timerAssemble_;
   double timerLoadComplete_;
@@ -303,7 +313,7 @@ public:
   virtual void save_diagonal_term(
     unsigned,
     const ngp::Mesh::ConnectedNodes&,
-    const SharedMemView<const double**>&
+    const SharedMemView<const double**,DeviceShmem>&
   ) {}
 
   std::vector<Algorithm *> bcDataAlg_;
@@ -322,6 +332,12 @@ public:
 
   /// List of tasks to be performed after each EquationSystem::solve_and_update
   std::vector<AlgorithmDriver*> postIterAlgDriver_;
+
+  //! Counter to track the number of linear system outputs
+  //!
+  //! Move this to EquationSystem instead of LinearSystem so that we don't reset
+  //! the counter when performing matrix reinitializations.
+  size_t linsysWriteCounter_{0};
 
   std::string dofName_{"undefined"};
 
@@ -351,6 +367,25 @@ EquationSystem::create_peclet_function(
     const T c2 = realm_.get_tanh_width(dofName);
     pecletFunction = new TanhFunction<T>(c1, c2);
   }
+  return pecletFunction;
+}
+
+template<typename T>
+PecletFunction<T>*
+EquationSystem::ngp_create_peclet_function(const std::string& dofName)
+{
+  PecletFunction<T>* pecletFunction = nullptr;
+  if ("classic" == realm_.get_tanh_functional_form(dofName)) {
+    const T hybridFactor = realm_.get_hybrid_factor(dofName);
+    const T A = 5.0;
+    pecletFunction = nalu_ngp::create<ClassicPecletFunction<T>>(A, hybridFactor);
+  } else {
+    const T c1 = realm_.get_tanh_trans(dofName);
+    const T c2 = realm_.get_tanh_width(dofName);
+    pecletFunction = nalu_ngp::create<TanhFunction<T>>(c1, c2);
+  }
+
+  ngpPecletFunctions_.push_back(pecletFunction);
   return pecletFunction;
 }
 

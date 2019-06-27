@@ -26,6 +26,9 @@ class WedSCS;
 class WedSCV;
 class Quad42DSCS;
 class Quad42DSCV;
+class Quad3DSCS;
+class Quad92DSCS;
+class Quad92DSCV;
 class Quad93DSCS;
 class Tri32DSCS;
 class Tri32DSCV;
@@ -43,6 +46,8 @@ struct AlgTraitsHex8 {
   static constexpr stk::topology::topology_t topo_ = stk::topology::HEX_8;
   using            masterElementScs_ = HexSCS;
   using            masterElementScv_ = HexSCV;
+
+  static constexpr bool isSuperTopo = false;
 };
 
 struct AlgTraitsHex27 {
@@ -54,6 +59,8 @@ struct AlgTraitsHex27 {
   static constexpr stk::topology::topology_t topo_ = stk::topology::HEX_27;
   using            masterElementScs_ = Hex27SCS;
   using            masterElementScv_ = Hex27SCV;
+
+  static constexpr bool isSuperTopo = false;
 };
 
 struct AlgTraitsTet4 {
@@ -65,6 +72,8 @@ struct AlgTraitsTet4 {
   static constexpr stk::topology::topology_t topo_ = stk::topology::TET_4;
   using            masterElementScs_ = TetSCS;
   using            masterElementScv_ = TetSCV;
+
+  static constexpr bool isSuperTopo = false;
 };
 
 struct AlgTraitsPyr5 {
@@ -76,6 +85,8 @@ struct AlgTraitsPyr5 {
   static constexpr stk::topology::topology_t topo_ = stk::topology::PYRAMID_5;
   using            masterElementScs_ = PyrSCS;
   using            masterElementScv_ = PyrSCV;
+
+  static constexpr bool isSuperTopo = false;
 };
 
 struct AlgTraitsWed6 {
@@ -87,6 +98,8 @@ struct AlgTraitsWed6 {
   static constexpr stk::topology::topology_t topo_ = stk::topology::WEDGE_6;
   using            masterElementScs_ = WedSCS;
   using            masterElementScv_ = WedSCV;
+
+  static constexpr bool isSuperTopo = false;
 };
 
 struct AlgTraitsQuad4_2D {
@@ -98,6 +111,8 @@ struct AlgTraitsQuad4_2D {
   static constexpr stk::topology::topology_t topo_ = stk::topology::QUAD_4_2D;
   using            masterElementScs_ = Quad42DSCS;
   using            masterElementScv_ = Quad42DSCV;
+
+  static constexpr bool isSuperTopo = false;
 };
 
 struct AlgTraitsQuad9_2D {
@@ -107,7 +122,10 @@ struct AlgTraitsQuad9_2D {
   static constexpr int numScvIp_ = 36;
   static constexpr int numGp_ = 9; // for FEM (not supported)
   static constexpr stk::topology::topology_t topo_ = stk::topology::QUAD_9_2D;
-  using            masterElementScs_ = Quad93DSCS;
+  using            masterElementScv_ = Quad92DSCV;
+  using            masterElementScs_ = Quad92DSCS;
+
+  static constexpr bool isSuperTopo = false;
 };
 
 struct AlgTraitsTri3_2D {
@@ -119,6 +137,8 @@ struct AlgTraitsTri3_2D {
   static constexpr stk::topology::topology_t topo_ = stk::topology::TRI_3_2D;
   using            masterElementScs_ = Tri32DSCS;
   using            masterElementScv_ = Tri32DSCV;
+
+  static constexpr bool isSuperTopo = false;
 };
 
 template <int p> constexpr int nGL() { return (p % 2 == 0) ? p / 2 + 1 : (p + 1) / 2; }
@@ -135,6 +155,8 @@ struct AlgTraitsQuadGL_2D {
     nodesPerElement_ + stk::topology::SUPERELEMENT_START
   );
   static constexpr stk::topology::topology_t baseTopo_ = stk::topology::QUAD_4_2D;
+
+  static constexpr bool isSuperTopo = true;
 };
 
 template <int p>
@@ -149,6 +171,8 @@ struct AlgTraitsHexGL {
     nodesPerElement_ + stk::topology::SUPERELEMENT_START
   );
   static constexpr stk::topology::topology_t baseTopo_ = stk::topology::HEX_8;
+
+  static constexpr bool isSuperTopo = true;
 };
 
 template <int p>
@@ -167,6 +191,8 @@ struct AlgTraitsHex
   static constexpr int nodes1D_ = p + 1;
   static constexpr int nscs_ = p;
   static constexpr stk::topology::topology_t baseTopo_ = stk::topology::HEX_8;
+
+  static constexpr bool isSuperTopo = true;
 };
 
 struct AlgTraitsEdge_3D
@@ -176,6 +202,8 @@ struct AlgTraitsEdge_3D
   static constexpr int numScsIp_ = 1;
   static constexpr int numScvIp_ = 2;
   static constexpr stk::topology::topology_t topo_ = stk::topology::LINE_2;
+
+  static constexpr bool isSuperTopo = false;
 };
 
 //-------------------------------------------------------------------------------------------
@@ -188,6 +216,9 @@ struct AlgTraitsQuad4
   static constexpr int numScsIp_ = 4;
   static constexpr int numFaceIp_ = numScsIp_;
   static constexpr stk::topology::topology_t topo_ = stk::topology::QUAD_4;
+  using            masterElementScs_ = Quad3DSCS;
+
+  static constexpr bool isSuperTopo = false;
 };
 
 struct AlgTraitsQuad9
@@ -198,6 +229,9 @@ struct AlgTraitsQuad9
   static constexpr int numScsIp_ = 36;
   static constexpr int numFaceIp_ = numScsIp_;
   static constexpr stk::topology::topology_t topo_ = stk::topology::QUAD_9;
+  using            masterElementScs_ = Quad93DSCS;
+
+  static constexpr bool isSuperTopo = false;
 };
 
 struct AlgTraitsTri3
@@ -209,6 +243,8 @@ struct AlgTraitsTri3
   static constexpr int numFaceIp_ = numScsIp_;
   static constexpr stk::topology::topology_t topo_ = stk::topology::TRI_3;
   using            masterElementScs_ = Tri3DSCS;
+
+  static constexpr bool isSuperTopo = false;
 };
 
 struct AlgTraitsEdge_2D
@@ -220,6 +256,8 @@ struct AlgTraitsEdge_2D
   static constexpr int numFaceIp_ = numScsIp_;
   static constexpr stk::topology::topology_t topo_ = stk::topology::LINE_2;
   using            masterElementScs_ = Edge2DSCS;
+
+  static constexpr bool isSuperTopo = false;
 };
 
 
@@ -232,6 +270,8 @@ struct AlgTraitsEdge3_2D
   static constexpr int numFaceIp_ = numScsIp_;
   static constexpr stk::topology::topology_t topo_ = stk::topology::LINE_3;
   using            masterElementScs_ = Edge32DSCS;
+
+  static constexpr bool isSuperTopo = false;
 };
 
 template <int p>
@@ -246,6 +286,8 @@ struct AlgTraitsQuadGL
     nodesPerElement_ + stk::topology::SUPERFACE_START
   );
   static constexpr stk::topology::topology_t baseTopo_ = stk::topology::QUAD_4;
+
+  static constexpr bool isSuperTopo = true;
 };
 
 template <int p>
@@ -260,6 +302,8 @@ struct AlgTraitsEdgeGL
     nodesPerElement_ + stk::topology::SUPEREDGE_START
   );
   static constexpr stk::topology::topology_t baseTopo_ = stk::topology::LINE_2;
+
+  static constexpr bool isSuperTopo = true;
 };
 
 //-------------------------------------------------------------------------------------------

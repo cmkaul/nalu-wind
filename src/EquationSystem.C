@@ -101,6 +101,9 @@ EquationSystem::~EquationSystem()
   for (auto it = postIterAlgDriver_.begin(); it != postIterAlgDriver_.end(); ++it) {
     delete *it;
   }
+
+  for (auto* pecFunc: ngpPecletFunctions_)
+    nalu_ngp::destroy(pecFunc);
 }
 
 //--------------------------------------------------------------------------

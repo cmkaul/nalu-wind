@@ -74,7 +74,6 @@
 
 // actuator line
 #include <Actuator.h>
-#include <ActuatorLinePointDrag.h>
 #ifdef NALU_USES_OPENFAST
 #include <ActuatorLineFAST.h>
 #include <ActuatorDiskFAST.h>
@@ -267,6 +266,9 @@ namespace nalu{
 //--------------------------------------------------------------------------
 Realm::~Realm()
 {
+  ngpFieldMgr_.reset();
+  ngpMesh_.reset();
+
   delete bulkData_;
   delete metaData_;
   delete ioBroker_;
@@ -609,10 +611,6 @@ Realm::look_ahead_and_creation(const YAML::Node & node)
     if ( (*foundActuator[0])["actuator"]["type"] ) {
       const std::string ActuatorTypeName = (*foundActuator[0])["actuator"]["type"].as<std::string>() ;
       switch ( ActuatorTypeMap[ActuatorTypeName] ) {
-      case ActuatorType::ActLinePointDrag : {
-	actuator_ =  new ActuatorLinePointDrag(*this, *foundActuator[0]);
-	break;
-      }
       case ActuatorType::ActLineFAST : {
 #ifdef NALU_USES_OPENFAST
 	actuator_ =  new ActuatorLineFAST(*this, *foundActuator[0]);
@@ -1900,15 +1898,12 @@ Realm::pre_timestep_work()
       initialize_non_conformal();
 
     // and overset algorithm
-    if ( hasOverset_ ) {
+    if ( hasOverset_ )
       initialize_overset();
-
-      // Only need to reset HYPRE IDs when overset inactive rows change
-      set_hypre_global_id();
-    }
 
     // Reset the ngp::Mesh instance
     ngpMesh_.reset(new ngp::Mesh(*bulkData_));
+    ngpFieldMgr_.reset(new ngp::FieldManager(*bulkData_));
 
     // now re-initialize linear system
     equationSystems_.reinitialize_linear_system();
@@ -3117,6 +3112,10 @@ Realm::setup_overset_bc(
       NaluEnv::self().naluOutputP0()
         << "Realm::setup_overset_bc:: Selecting STK-based overset connectivity algorithm"
         << std::endl;
+      if (solutionOptions_->meshMotion_)
+        NaluEnv::self().naluOutputP0()
+          << "WARNING:: Using STK-based overset with mesh motion has not been tested "
+          << std::endl;
       oversetManager_ = new OversetManagerSTK(*this, oversetBCData.userData_);
       break;
 

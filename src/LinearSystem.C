@@ -55,7 +55,6 @@ LinearSystem::LinearSystem(
   : realm_(realm),
     eqSys_(eqSys),
     inConstruction_(false),
-    writeCounter_(0),
     numDof_(numDof),
     eqSysName_(eqSys->name_),
     linearSolver_(linearSolver),
@@ -73,10 +72,10 @@ LinearSystem::LinearSystem(
 
 void LinearSystem::zero_timer_precond()
 {
-  linearSolver_->zero_timer_precond();  
+  linearSolver_->zero_timer_precond();
 }
 
-double LinearSystem::get_timer_precond() 
+double LinearSystem::get_timer_precond()
 {
   return linearSolver_->get_timer_precond();
 }
@@ -92,6 +91,10 @@ LinearSystem *LinearSystem::create(Realm& realm, const unsigned numDof, Equation
 {
   switch(solver->getType()) {
   case PT_TPETRA:
+    return new TpetraLinearSystem(realm, numDof, eqSys, solver);
+    break;
+
+  case PT_TPETRA_SEGREGATED:
     return new TpetraLinearSystem(realm, numDof, eqSys, solver);
     break;
 

@@ -40,34 +40,37 @@ public:
   using MasterElement::determinant;
   using MasterElement::grad_op;
   using MasterElement::shifted_grad_op;
-  using MasterElement::shape_fcn;
-  using MasterElement::shifted_shape_fcn;
 
   KOKKOS_FUNCTION
   PyrSCV();
   KOKKOS_FUNCTION
   virtual ~PyrSCV() = default;
 
-  virtual const int * ipNodeMap(int ordinal = 0) const final;
+  KOKKOS_FUNCTION virtual const int *  ipNodeMap(int ordinal = 0) const final;
 
-  void determinant(
-    SharedMemView<DoubleType**>& coords,
-    SharedMemView<DoubleType*>& vol);
+  KOKKOS_FUNCTION void shape_fcn(SharedMemView<DoubleType**, DeviceShmem> &shpfc);
 
-  void grad_op(
-    SharedMemView<DoubleType**>& coords,
-    SharedMemView<DoubleType***>& gradop,
-    SharedMemView<DoubleType***>& deriv);
+  KOKKOS_FUNCTION void shifted_shape_fcn(
+    SharedMemView<DoubleType**, DeviceShmem> &shpfc);
 
-  void shifted_grad_op(
-    SharedMemView<DoubleType**>& coords,
-    SharedMemView<DoubleType***>& gradop,
-    SharedMemView<DoubleType***>& deriv);
+  KOKKOS_FUNCTION void determinant(
+    SharedMemView<DoubleType**, DeviceShmem>& coords,
+    SharedMemView<DoubleType*, DeviceShmem>& vol);
 
-  void Mij(
-    SharedMemView<DoubleType**>& coords,
-    SharedMemView<DoubleType***>& metric,
-    SharedMemView<DoubleType***>& deriv);
+  KOKKOS_FUNCTION void grad_op(
+    SharedMemView<DoubleType**, DeviceShmem>& coords,
+    SharedMemView<DoubleType***, DeviceShmem>& gradop,
+    SharedMemView<DoubleType***, DeviceShmem>& deriv);
+
+  KOKKOS_FUNCTION void shifted_grad_op(
+    SharedMemView<DoubleType**, DeviceShmem>& coords,
+    SharedMemView<DoubleType***, DeviceShmem>& gradop,
+    SharedMemView<DoubleType***, DeviceShmem>& deriv);
+
+  KOKKOS_FUNCTION void Mij(
+    SharedMemView<DoubleType**, DeviceShmem>& coords,
+    SharedMemView<DoubleType***, DeviceShmem>& metric,
+    SharedMemView<DoubleType***, DeviceShmem>& deriv);
 
   void determinant(
     const int nelem,
@@ -139,8 +142,6 @@ class PyrSCS : public MasterElement
 public:
   using AlgTraits = AlgTraitsPyr5;
   using MasterElement::determinant;
-  using MasterElement::shape_fcn;
-  using MasterElement::shifted_shape_fcn;
   using MasterElement::adjacentNodes;
 
   KOKKOS_FUNCTION
@@ -148,11 +149,16 @@ public:
   KOKKOS_FUNCTION
   virtual ~PyrSCS() = default;
 
-  virtual const int * ipNodeMap(int ordinal = 0) const final;
+  KOKKOS_FUNCTION virtual const int *  ipNodeMap(int ordinal = 0) const final;
 
-  void determinant(
-    SharedMemView<DoubleType**>& coords,
-    SharedMemView<DoubleType**>& areav);
+  KOKKOS_FUNCTION void shape_fcn(SharedMemView<DoubleType**, DeviceShmem> &shpfc);
+
+  KOKKOS_FUNCTION void shifted_shape_fcn(
+    SharedMemView<DoubleType**, DeviceShmem> &shpfc);
+
+  KOKKOS_FUNCTION void determinant(
+    SharedMemView<DoubleType**, DeviceShmem>& coords,
+    SharedMemView<DoubleType**, DeviceShmem>& areav);
 
   void determinant(
     const int nelem,
@@ -160,10 +166,10 @@ public:
     double *areav,
     double * error );
 
-  void grad_op(
-    SharedMemView<DoubleType**>& coords,
-    SharedMemView<DoubleType***>& gradop,
-    SharedMemView<DoubleType***>& deriv);
+  KOKKOS_FUNCTION void grad_op(
+    SharedMemView<DoubleType**, DeviceShmem>& coords,
+    SharedMemView<DoubleType***, DeviceShmem>& gradop,
+    SharedMemView<DoubleType***, DeviceShmem>& deriv);
 
   void grad_op(
     const int nelem,
@@ -173,10 +179,10 @@ public:
     double *det_j,
     double * error );
 
-  void shifted_grad_op(
-    SharedMemView<DoubleType**>& coords,
-    SharedMemView<DoubleType***>& gradop,
-    SharedMemView<DoubleType***>& deriv);
+  KOKKOS_FUNCTION void shifted_grad_op(
+    SharedMemView<DoubleType**, DeviceShmem>& coords,
+    SharedMemView<DoubleType***, DeviceShmem>& gradop,
+    SharedMemView<DoubleType***, DeviceShmem>& deriv);
 
   void shifted_grad_op(
     const int nelem,
@@ -196,11 +202,11 @@ public:
     const double *intLoc,
     double *deriv);
 
-  void gij( 
-    SharedMemView<DoubleType**>& coords,
-    SharedMemView<DoubleType***>& gupper,
-    SharedMemView<DoubleType***>& glower,
-    SharedMemView<DoubleType***>& deriv);
+  KOKKOS_FUNCTION void gij( 
+    SharedMemView<DoubleType**, DeviceShmem>& coords,
+    SharedMemView<DoubleType***, DeviceShmem>& gupper,
+    SharedMemView<DoubleType***, DeviceShmem>& glower,
+    SharedMemView<DoubleType***, DeviceShmem>& deriv);
 
   void gij(
     const double *coords,
@@ -208,17 +214,17 @@ public:
     double *glowerij,
     double *deriv);
 
-  void Mij(
-    SharedMemView<DoubleType**>& coords,
-    SharedMemView<DoubleType***>& metric,
-    SharedMemView<DoubleType***>& deriv);
+  KOKKOS_FUNCTION void Mij(
+    SharedMemView<DoubleType**, DeviceShmem>& coords,
+    SharedMemView<DoubleType***, DeviceShmem>& metric,
+    SharedMemView<DoubleType***, DeviceShmem>& deriv);
 
   void Mij(
     const double *coords,
     double *metric,
     double *deriv);
 
-  virtual const int * adjacentNodes() final;
+  KOKKOS_FUNCTION virtual const int * adjacentNodes() final;
 
   const int * scsIpEdgeOrd();
 
@@ -264,10 +270,10 @@ public:
     double *det_j,
     double *error);
 
-  void face_grad_op(
+  KOKKOS_FUNCTION void face_grad_op(
     int face_ordinal,
-    SharedMemView<DoubleType**>& coords,
-    SharedMemView<DoubleType***>& gradop) final;
+    SharedMemView<DoubleType**, DeviceShmem>& coords,
+    SharedMemView<DoubleType***, DeviceShmem>& gradop) final;
 
   void shifted_face_grad_op(
     const int nelem,
@@ -277,10 +283,10 @@ public:
     double *det_j,
     double * error );
 
-  void shifted_face_grad_op(
+  KOKKOS_FUNCTION void shifted_face_grad_op(
     int face_ordinal,
-    SharedMemView<DoubleType**>& coords,
-    SharedMemView<DoubleType***>& gradop) final;
+    SharedMemView<DoubleType**, DeviceShmem>& coords,
+    SharedMemView<DoubleType***, DeviceShmem>& gradop) final;
 
   void general_face_grad_op(
     const int face_ordinal,
