@@ -407,17 +407,61 @@ ComputeABLWallFluxesAlgorithm::execute()
         }
         uTangential = std::sqrt(uTangential);
 
+        heatFluxBip = rhoBip * CpBip * currFlux;
         std::cout << "   uTangential = " << uTangential << std::endl;
         std::cout << "   temperatureBip = " << temperatureBip << std::endl;
         std::cout << "   heatFluxBip = " << heatFluxBip << std::endl;
         std::cout << "   rhoBip = " << rhoBip << std::endl;
         std::cout << "   CpBip = " << CpBip << std::endl;
     
-
-	double TfluxBip = heatFluxBip / (rhoBip * CpBip);
-        compute_utau(uTangential, ypBip, TfluxBip, p_ABLProfFun, wallFrictionVelocityBip[ip]);
+      //double TfluxBip = heatFluxBip / (rhoBip * CpBip);
+      //compute_utau(uTangential, ypBip, TfluxBip, p_ABLProfFun, wallFrictionVelocityBip[ip]);
         double tol = 1.0E-3;
-        compute_fluxes_given_surface_temperature(tol, uTangential, temperatureBip, currSurfaceTemperature, ypBip, p_ABLProfFun, wallFrictionVelocityBip[ip], wallHeatFluxBip[ip]);
+
+        double wallFrictionVelocityAlg1 = 0.0;
+        double wallHeatFluxAlg1 = heatFluxBip;
+        double wallFrictionVelocityAlg2 = 0.0;
+        double wallHeatFluxAlg2 = 0.0;
+        double currSurfaceTemperatureAlg1 = 0.0;
+        double currSurfaceTemperatureAlg2 = currSurfaceTemperature;
+
+
+        compute_fluxes_given_surface_heating
+        (
+            tol, 
+            uTangential, 
+            temperatureBip, 
+            currSurfaceTemperatureAlg1, 
+            rhoBip, 
+            CpBip,
+            ypBip, 
+            p_ABLProfFun, 
+            wallFrictionVelocityAlg1, 
+            wallHeatFluxAlg1
+        );
+     
+        compute_fluxes_given_surface_temperature
+        (
+            tol, 
+            uTangential, 
+            temperatureBip, 
+            currSurfaceTemperatureAlg2, 
+            rhoBip, 
+            CpBip,
+            ypBip, 
+            p_ABLProfFun, 
+            wallFrictionVelocityAlg2, 
+            wallHeatFluxAlg2
+        );
+
+        wallFrictionVelocityBip[ip] = (1.0-currWeight)*wallFrictionVelocityAlg1 + currWeight*wallFrictionVelocityAlg2;
+        wallHeatFluxBip[ip] = (1.0-currWeight)*wallHeatFluxAlg1 + currWeight*wallHeatFluxAlg2;
+        currSurfaceTemperature = (1.0-currWeight)*currSurfaceTemperatureAlg1 + currWeight*currSurfaceTemperatureAlg2;
+
+        std::cout << "wallFrictionVelocityBip[" << ip << "] = " << wallFrictionVelocityBip[ip] << std::endl; 
+        std::cout << "wallHeatFluxBip[" << ip << "] = " << wallHeatFluxBip[ip] << std::endl; 
+        std::cout << "currSurfaceTemperature[" << ip << "] = " << currSurfaceTemperature << std::endl; 
+
         uTauAreaSumLocal[0] += wallFrictionVelocityBip[ip] * aMag ;
         uTauAreaSumLocal[1] += aMag ;
       }
@@ -470,10 +514,22 @@ ComputeABLWallFluxesAlgorithm::zero_nodal_fields()
 //-------- compute_fluxes_given_surface_temperature ------------------------
 //--------------------------------------------------------------------------
 void 
-ComputeABLWallFluxesAlgorithm::compute_fluxes_given_surface_temperature(
-    const double tol, const double &up, const double &Tp, const double Tsurface, const double &zp, const ABLProfileFunction *ABLProfFun, double &utau, double &qsurf)
+ComputeABLWallFluxesAlgorithm::compute_fluxes_given_surface_temperature
+(
+    const double tol, 
+    const double &up, 
+    const double &Tp, 
+    const double Tsurface, 
+    const double rho, 
+    const double Cp, 
+    const double &zp, 
+    const ABLProfileFunction *ABLProfFun, 
+    double &utau, 
+    double &qsurf
+)
 {
   // This is algorithm 2 outlined by Basu et al.
+
   // Set Psi_H and Psi_M initially to zero.
   double Psi_H = 0.0;
   double Psi_M = 0.0;
@@ -521,14 +577,19 @@ ComputeABLWallFluxesAlgorithm::compute_fluxes_given_surface_temperature(
 
     // Add to the iteration count.
     iter++;
-    
+  
+  /*  
     std::cout << "     - iteration: " << iter << std::endl;
     std::cout << "     - friction velocity = " << frictionVelocity << " " << frictionVelocityDelta << std::endl;
     std::cout << "     - temperature flux = " << temperatureFlux << " " << temperatureFluxDelta << std::endl;
     std::cout << "     - L = " << L << std::endl;
     std::cout << "     - Psi_M = " << Psi_M << std::endl;
     std::cout << "     - Psi_H = " << Psi_H << std::endl;
+  */
   }
+
+  utau = frictionVelocity;
+  qsurf = rho * Cp * temperatureFlux;
 }
 
 
@@ -536,10 +597,80 @@ ComputeABLWallFluxesAlgorithm::compute_fluxes_given_surface_temperature(
 //-------- compute_fluxes_given_surface_heat_flux -------------------------
 //--------------------------------------------------------------------------
 void 
-ComputeABLWallFluxesAlgorithm::compute_fluxes_given_surface_heating(
+ComputeABLWallFluxesAlgorithm::compute_fluxes_given_surface_heating
+(
+    const double tol,
+    const double &up,
+    const double &Tp,
+    double &Tsurface,
+    const double rho,
+    const double Cp,
+    const double &zp,
+    const ABLProfileFunction *ABLProfFun,
+    double &utau, 
+    const double &qsurf
 )
 {
-  // Do nothing.
+  // This is algorithm 1 outlined by Basu et al.
+
+  // Set Psi_H and Psi_M initially to zero.
+  double Psi_H = 0.0;
+  double Psi_M = 0.0;
+
+  // Enter the iterative solver loop and iterate until convergence
+  double frictionVelocity = 0.0;
+  double frictionVelocityOld = 1.0E10;
+  double temperatureFlux = qsurf / (rho * Cp);
+  double L = 1.0E10;
+  double frictionVelocityDelta = std::abs(frictionVelocity - frictionVelocityOld);
+  int iterMax = 1000;
+  int iter = 0;
+  while ((frictionVelocityDelta > tol ) && (iter < iterMax))
+  {
+    // Update the old values.
+    frictionVelocityOld = frictionVelocity;
+
+    // Compute friction velocity using Monin-Obukhov similarity.
+    frictionVelocity = (kappa_ * up) / (std::log(zp / z0_) - Psi_M);
+
+    // Compute heat flux using Monin-Obukhov similarity.
+ // double deltaT = Tp - Tsurface;
+ // temperatureFlux = -(deltaT * frictionVelocity * kappa_) / (std::log(zp / z0_) - Psi_H);
+
+    // Compute Obukhov length.
+    if (temperatureFlux == 0.0)
+    {
+      L = 1.0E10;
+    }
+    else
+    {
+      L = -(Tref_ * std::pow(frictionVelocity,3))/(kappa_ * gravity_ * temperatureFlux);
+    }
+
+    // Recompute Psi_H and Psi_M.
+    Psi_H = ABLProfFun->temperature(zp/L);
+    Psi_M = ABLProfFun->velocity(zp/L);
+
+    // Compute changes in solution.
+    frictionVelocityDelta = std::abs(frictionVelocity - frictionVelocityOld);
+
+    // Compute the surface temperature.
+    Tsurface = Tp + (temperatureFlux * ((std::log(zp / z0_) - Psi_H) / (std::max(frictionVelocity,0.001) * kappa_)));
+
+    // Add to the iteration count.
+    iter++;
+
+  /*
+    std::cout << "     - iteration: " << iter << std::endl;
+    std::cout << "     - friction velocity = " << frictionVelocity << " " << frictionVelocityDelta << std::endl;
+    std::cout << "     - temperature flux = " << temperatureFlux << std::endl;
+    std::cout << "     - surface temperature = " << Tsurface << std::endl;
+    std::cout << "     - L = " << L << std::endl;
+    std::cout << "     - Psi_M = " << Psi_M << std::endl;
+  */
+  }
+
+  utau = frictionVelocity;
 }
 
 //--------------------------------------------------------------------------

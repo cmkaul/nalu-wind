@@ -151,6 +151,7 @@ AssembleFaceScalarFluxBCSolverAlgorithm::execute()
         
         // flux is either given or is a highly nonlinear function, so 
         // only contribute to rhs and leave lhs zeroed.
+        std::cout << "fluxBip = " << fluxBip << std::endl;
         p_rhs[localFaceNode] += fluxBip*areaNorm;
       }
 

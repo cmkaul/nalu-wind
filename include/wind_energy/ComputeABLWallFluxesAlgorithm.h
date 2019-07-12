@@ -59,12 +59,27 @@ public:
   //! Compute the surface fluxes.
   void compute_fluxes_given_surface_temperature(
       const double tol,
-      const double &up, const double &Tp,
+      const double &up, 
+      const double &Tp,
       const double Tsurface,
+      const double rho,
+      const double Cp,
       const double &zp,
       const ABLProfileFunction *ABLProfFun,
-      double &utau, double &qsurf);
-  void compute_fluxes_given_surface_heating();
+      double &utau, 
+      double &qsurf);
+
+  void compute_fluxes_given_surface_heating(
+      const double tol,
+      const double &up,
+      const double &Tp,
+      double &Tsurface,
+      const double rho,
+      const double Cp,
+      const double &zp,
+      const ABLProfileFunction *ABLProfFun,
+      double &utau, 
+      const double &qsurf);
   
   void normalize_nodal_fields();
 
@@ -80,6 +95,10 @@ public:
   const double kappa_;
   const int maxIteration_;
   const double tolerance_;
+
+  bool useLESSamplingHeight_{false};
+  double lesModelRefHeight_{0.0};
+  double lesModelRefHeightTemp_{0.0};
 
   VectorFieldType *velocity_;
   ScalarFieldType *temperature_;

@@ -884,8 +884,19 @@ namespace YAML
     if (node["use_abl_wall_function"])
     {
       wallData.wallFunctionApproach_ = node["use_abl_wall_function"].as<bool>();
-      wallData.ablWallFunctionApproach_ =
-          node["use_abl_wall_function"].as<bool>();
+      wallData.ablWallFunctionApproach_ = node["use_abl_wall_function"].as<bool>();
+      if (node["sampling_offset_vector"]) {
+        auto& sampling_node = node["sampling_offset_vector"];
+        wallData.ablTargetPartNames_ = sampling_node["target_search_parts"].as<std::vector<std::string>>();
+        if(sampling_node["velocity_sampling_offset_vector"]){
+          wallData.lesSampleVelocityModel_ = true;
+          wallData.VeloffsetVector_ = sampling_node["velocity_sampling_offset_vector"].as<std::vector<double>>();
+        }
+        if(sampling_node["temp_sampling_offset_vector"]) {
+          wallData.lesSampleTemperatureModel_ = true;  
+          wallData.TempOffsetVector_ = sampling_node["temp_sampling_offset_vector"].as<std::vector<double>>();
+        }
+      }
     }
     if (node["pressure"])
     {
