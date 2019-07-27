@@ -889,12 +889,12 @@ namespace YAML
         auto& sampling_node = node["sampling_offset_vector"];
         wallData.ablTargetPartNames_ = sampling_node["target_search_parts"].as<std::vector<std::string>>();
         if(sampling_node["velocity_sampling_offset_vector"]){
-          wallData.lesSampleVelocityModel_ = true;
-          wallData.VeloffsetVector_ = sampling_node["velocity_sampling_offset_vector"].as<std::vector<double>>();
+          wallData.sampleOffsetVelocity_ = true;
+          wallData.velOffsetVector_ = sampling_node["velocity_sampling_offset_vector"].as<std::vector<double>>();
         }
         if(sampling_node["temp_sampling_offset_vector"]) {
-          wallData.lesSampleTemperatureModel_ = true;  
-          wallData.TempOffsetVector_ = sampling_node["temp_sampling_offset_vector"].as<std::vector<double>>();
+          wallData.sampleOffsetTemperature_ = true;  
+          wallData.tempOffsetVector_ = sampling_node["temp_sampling_offset_vector"].as<std::vector<double>>();
         }
       }
     }

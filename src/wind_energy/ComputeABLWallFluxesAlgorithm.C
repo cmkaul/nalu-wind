@@ -9,6 +9,7 @@
 // nalu
 #include <wind_energy/ComputeABLWallFluxesAlgorithm.h>
 #include <Algorithm.h>
+#include <EquationSystem.h>
 
 #include <FieldTypeDef.h>
 #include <Realm.h>
@@ -88,6 +89,19 @@ ComputeABLWallFluxesAlgorithm::ComputeABLWallFluxesAlgorithm(
   assembledWallNormalDistance_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "assembled_wall_normal_distance");
   
   load(node);
+
+
+  
+  for (auto* eqn: realm_.equationSystems_.equationSystemVector_)
+  {
+    std::cout << "eqnTypeName_ = " << eqn->eqnTypeName_ << std::endl;
+    if (eqn->eqnTypeName_ == "enthalpy") hasTemperature_ = true;
+    if (eqn->eqnTypeName_ == "momentum") hasVelocity_ = true;
+  }
+
+  
+  std::cout << "hasTemperature_ = " << hasTemperature_ << std::endl;
+  std::cout << "hasVelocity_ = " << hasVelocity_ << std::endl;
 }
 
 //--------------------------------------------------------------------------
@@ -195,6 +209,33 @@ ComputeABLWallFluxesAlgorithm::execute()
   VectorFieldType &velocityNp1 = velocity_->field_of_state(stk::mesh::StateNP1);
   ScalarFieldType &temperatureNp1 = temperature_->field_of_state(stk::mesh::StateNP1);
   ScalarFieldType &densityNp1 = density_->field_of_state(stk::mesh::StateNP1);
+  
+
+
+
+
+  // sample the arbitrary height, planar-averaged velocity.
+
+  std::vector<double> uPlanarAveraged(nDim);
+  double *p_uPlanarAveraged = &uPlanarAveraged[0];
+  if (sampleOffsetVelocity_) {
+     realm_.bdyLayerStats_->velocity(planarAverageOffsetHeightVel_, p_uPlanarAveraged);
+  }
+  std::cout << "sampleOffsetVelocity_ = " << sampleOffsetVelocity_ << std::endl;
+  std::cout << "Planar averged velocity at z = " << planarAverageOffsetHeightVel_ << "m: (" << uPlanarAveraged[0] << " " << uPlanarAveraged[1] << " " << uPlanarAveraged[2] << ") m/s" << std::endl; 
+
+  // sample the arbitrary height, planar-averaged temperature.
+  double TPlanarAveraged;
+  double* p_TPlanarAveraged = &TPlanarAveraged;
+  if (sampleOffsetTemperature_) {
+     realm_.bdyLayerStats_->temperature(planarAverageOffsetHeightTemp_, p_TPlanarAveraged);
+  }
+  std::cout << "sampleOffsetVelocity_ = " << sampleOffsetTemperature_ << std::endl;
+  std::cout << "Planar averged temperature at z = " << planarAverageOffsetHeightTemp_ << "m: " << TPlanarAveraged << " K" << std::endl; 
+
+
+
+
 
   // define vector of parent topos; should always be UNITY in size
   std::vector<stk::topology> parentTopo;
@@ -248,6 +289,8 @@ ComputeABLWallFluxesAlgorithm::execute()
       meFC->shifted_shape_fcn(&p_face_shape_function[0]);
     else
       meFC->shape_fcn(&p_face_shape_function[0]);
+
+
 
     const stk::mesh::Bucket::size_type length   = b.size();
 
@@ -369,7 +412,13 @@ ComputeABLWallFluxesAlgorithm::execute()
           ypBip += nj*ej*nj*ej;
           p_unitNormal[j] = nj;
         }
-        ypBip = std::sqrt(ypBip);
+	if (sampleOffsetVelocity_) {
+           ypBip = planarAverageOffsetHeightVel_;
+        } 
+        else 
+        {
+           ypBip = std::sqrt(ypBip);
+        }
         wallNormalDistanceBip[ip] = ypBip;
 
         // assemble to nodal quantities

@@ -1962,27 +1962,27 @@ MomentumEquationSystem::register_wall_bc(
 
 
 
-        if (userData.lesSampleVelocityModel_) {
+        if (userData.sampleOffsetVelocity_) {
           if (realm_.bdyLayerStats_ == nullptr)
             throw std::runtime_error("MomentumEQS:: LES Sampling at different height requires boundary_layer_statistics turned on.");
           double refHeight = 0.0;
           for (int d=0; d < nDim; d++) {
-            refHeight += userData.VeloffsetVector_[d] * userData.VeloffsetVector_[d];
+            refHeight += userData.velOffsetVector_[d] * userData.velOffsetVector_[d];
           }
           refHeight = std::sqrt(refHeight);
-          theUtauAlg->useLESSamplingHeight_ = true;
-          theUtauAlg->lesModelRefHeight_ = refHeight;
+          theUtauAlg->sampleOffsetVelocity_ = true;
+          theUtauAlg->planarAverageOffsetHeightVel_ = refHeight;
         }
-        if (userData.lesSampleTemperatureModel_) {
+        if (userData.sampleOffsetTemperature_) {
           if (realm_.bdyLayerStats_ == nullptr)
             throw std::runtime_error("MomentumEQS:: LES Sampling at different height requires boundary_layer_statistics turned on.");
           double refHeight = 0.0;
           for (int d=0; d < nDim; d++) {
-            refHeight += userData.TempOffsetVector_[d] * userData.TempOffsetVector_[d];
+            refHeight += userData.tempOffsetVector_[d] * userData.tempOffsetVector_[d];
           }
           refHeight = std::sqrt(refHeight);
-          theUtauAlg->useLESSamplingHeight_ = true;
-          theUtauAlg->lesModelRefHeightTemp_ = refHeight;
+          theUtauAlg->sampleOffsetTemperature_ = true;
+          theUtauAlg->planarAverageOffsetHeightTemp_ = refHeight;
         }
 
 
@@ -2004,12 +2004,12 @@ MomentumEquationSystem::register_wall_bc(
         BdyLayerVelocitySampler* velocitySampler = nullptr;
 
         // Handle LES wall modeling approach
-        if (userData.lesSampleVelocityModel_) {
+        if (userData.sampleOffsetVelocity_) {
           velocitySampler = new BdyLayerVelocitySampler(realm_, userData);
           equationSystems_.preIterAlgDriver_.push_back(velocitySampler);
 
           NaluEnv::self().naluOutputP0()
-            << "MomentumEQS:: Activated velocity sampling from user-defined height for LES Wall model" << std::endl;
+            << "MomentumEQS:: Activated velocity sampling from user-defined height for ABL wall model" << std::endl;
         }
 
 
@@ -2023,7 +2023,7 @@ MomentumEquationSystem::register_wall_bc(
                                                                           grav, z0, referenceTemperature);     
         }
 
-       if (userData.lesSampleVelocityModel_) {
+       if (userData.sampleOffsetVelocity_) {
           velocitySampler->set_wall_func_algorithm(theAlg);
         }
 

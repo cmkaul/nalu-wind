@@ -96,9 +96,12 @@ public:
   const int maxIteration_;
   const double tolerance_;
 
-  bool useLESSamplingHeight_{false};
-  double lesModelRefHeight_{0.0};
-  double lesModelRefHeightTemp_{0.0};
+  bool hasTemperature_{false};
+  bool hasVelocity_{false};
+  bool sampleOffsetVelocity_{false};
+  bool sampleOffsetTemperature_{false};
+  double planarAverageOffsetHeightVel_{0.0};
+  double planarAverageOffsetHeightTemp_{0.0};
 
   VectorFieldType *velocity_;
   ScalarFieldType *temperature_;

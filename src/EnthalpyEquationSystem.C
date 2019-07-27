@@ -824,18 +824,18 @@ EnthalpyEquationSystem::register_wall_bc(
       BdyLayerTemperatureSampler* TemperatureSampler = nullptr;
 
         // Handle LES wall modeling approach
-        if (userData.lesSampleTemperatureModel_) {
+        if (userData.sampleOffsetTemperature_) {
           TemperatureSampler = new BdyLayerTemperatureSampler(realm_, userData);
           equationSystems_.preIterAlgDriver_.push_back(TemperatureSampler);
 
           NaluEnv::self().naluOutputP0()
-            << "EnthalpyEQS:: Activated Temperature sampling from user-defined height for LES Wall model" << std::endl;
+            << "EnthalpyEQS:: Activated temperature sampling from user-defined height for ABL wall model" << std::endl;
         }
 
       AssembleFaceScalarFluxBCSolverAlgorithm *theAlg
         = new AssembleFaceScalarFluxBCSolverAlgorithm(realm_, part, this, wallHeatFluxBip);
 
-      if (userData.lesSampleTemperatureModel_) {
+      if (userData.sampleOffsetTemperature_) {
         TemperatureSampler->set_wall_func_algorithm(theAlg);
       }
 

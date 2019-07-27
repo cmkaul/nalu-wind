@@ -10,6 +10,7 @@
 #include "NaluParsing.h"
 #include "SolverAlgorithm.h"
 #include "master_element/MasterElement.h"
+#include "master_element/MasterElementFactory.h"
 
 #include "stk_mesh/base/MetaData.hpp"
 #include "stk_mesh/base/BulkData.hpp"
@@ -28,7 +29,7 @@ BdyLayerVelocitySampler::BdyLayerVelocitySampler(
   WallUserData& wallUserData
 ) : AlgorithmDriver(realm),
     searchPartNames_(wallUserData.ablTargetPartNames_),
-    offsetVector_(wallUserData.VeloffsetVector_)
+    offsetVector_(wallUserData.velOffsetVector_)
 {
   if (offsetVector_.size() != realm_.meta_data().spatial_dimension())
     throw std::runtime_error(

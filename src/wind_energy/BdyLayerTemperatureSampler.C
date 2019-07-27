@@ -10,6 +10,7 @@
 #include "NaluParsing.h"
 #include "SolverAlgorithm.h"
 #include "master_element/MasterElement.h"
+#include "master_element/MasterElementFactory.h"
 
 #include "stk_mesh/base/MetaData.hpp"
 #include "stk_mesh/base/BulkData.hpp"
@@ -28,9 +29,9 @@ BdyLayerTemperatureSampler::BdyLayerTemperatureSampler(
   WallUserData& wallUserData
 ) : AlgorithmDriver(realm),
     searchPartNames_(wallUserData.ablTargetPartNames_),
-    TempOffsetVector_(wallUserData.TempOffsetVector_)
+    tempOffsetVector_(wallUserData.tempOffsetVector_)
 {
-  if (TempOffsetVector_.size() != realm_.meta_data().spatial_dimension())
+  if (tempOffsetVector_.size() != realm_.meta_data().spatial_dimension())
     throw std::runtime_error(
       "BdyLayerTemperatureSampler:: Invalid offset vector provided");
 }
@@ -136,7 +137,7 @@ BdyLayerTemperatureSampler::determine_bounding_spheres()
       // Apply offset to the wall node to determine the spatial location where
       // velocity is sampled.
       for (int d=0; d < nDim; d++) {
-        searchPt[d] = crd[d] + TempOffsetVector_[d];
+        searchPt[d] = crd[d] + tempOffsetVector_[d];
       }
 
       // Create STK search data structures and add this point to the search vector
@@ -295,7 +296,7 @@ BdyLayerTemperatureSampler::finalize_search(
     // Get the coordinates of the point where the Temperature is to be sampled.
     const double* nodeCrd = stk::mesh::field_data(*coords, node);
     for (int d=0; d < nDim; d++) {
-      nodalCoords[d] = nodeCrd[d] + TempOffsetVector_[d];
+      nodalCoords[d] = nodeCrd[d] + tempOffsetVector_[d];
     }
 
     // Populate the coordinates of the element nodes

@@ -118,7 +118,7 @@ private:
 
   //! The normal offset to be applied to determine the height above ground where
   //! the velocity is sampled for the LES wall model
-  std::vector<double> TempOffsetVector_{0.0, 0.0, 0.0};
+  std::vector<double> tempOffsetVector_{0.0, 0.0, 0.0};
 
   //! List of (element, mpi_rank) mapping for ghosting elements to other MPI
   //! ranks

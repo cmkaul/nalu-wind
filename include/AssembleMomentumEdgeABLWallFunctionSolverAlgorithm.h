@@ -22,6 +22,7 @@ namespace sierra{
 namespace nalu{
 
 class Realm;
+class BdyLayerVelocitySampler;
 
 class AssembleMomentumEdgeABLWallFunctionSolverAlgorithm : public SolverAlgorithm
 {
@@ -33,7 +34,8 @@ public:
     EquationSystem *eqSystem,
     const double &gravity,
     const double &z0,
-    const double &Tref);
+    const double &Tref,
+    BdyLayerVelocitySampler* velocitySampler = nullptr);
   virtual ~AssembleMomentumEdgeABLWallFunctionSolverAlgorithm() {}
   virtual void initialize_connectivity();
   virtual void execute();
@@ -56,6 +58,8 @@ public:
   GenericFieldType *exposedAreaVec_;
   GenericFieldType *wallFrictionVelocityBip_;
   GenericFieldType *wallNormalDistanceBip_;
+
+  BdyLayerVelocitySampler* velocitySampler_;
 };
 
 } // namespace nalu
