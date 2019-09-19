@@ -881,6 +881,59 @@ namespace YAML
     {
       wallData.wallFunctionApproach_ = node["use_wall_function"].as<bool>();
     }
+
+/*
+    // If the wall is treated as an atmospheric boundary layer surface stress model.
+    if (node["abl_wall_function"])
+    {
+      // - set the wall function and ABL wall function flags to true.
+      wallData.wallFunctionApproach_ = true;
+      wallData.ablWallFunctionApproach_ = true;
+
+      // - get the overall ABL wall function YAML node.
+      auto& ablWallFunctionNode = node["abl_wall_function"];
+
+      // - if using the offset sampling functionality, read in the part to sample from and offset vectors.
+      auto& samplingNode = ablWallFunctionNode["sampling_offset"];
+      wallData.ablTargetPartNames_ = samplingNode["target_search_parts"].as<std::vector<std::string>>();
+      if (samplingNode["velocity_sampling_offset_vector"])
+      {
+        wallData.sampleOffsetVelocity_ = true;
+        wallData.velOffsetVector_ = samplingNode["velocity_sampling_offset_vector"].as<std::vector<double>>();
+      }
+      if (samplingNode["temperature_sampling_offset_vector"])
+      {
+        wallData.sampleOffsetTemperature_ = true;
+        wallData.tempOffsetVector_ = samplingNode["temperature_sampling_offset_vector"].as<std::vector<doubl
+      }
+
+      // - get the averaging type for velocity that goes into the Monin-Obukhov similarity laws.
+      if (ablWallFunctionNode["monin_obukhov_averaging_type"])
+      {
+          wallData.MOaveragingType_ = ablWallFunctionNode["monin_obukhov_averaging_type"].as<std::string>();
+      }
+
+      // - get the reference temperature used by the ABL wall function.
+      if (ablWallFunctionNode["reference_temperature"])
+      {
+          wallData.referenceTemperature_ = ablWallFunctionNode["reference_temperature"].as<sierra::nalu::ReferenceTemperature>();
+          wallData.refTempSpec_ = true;
+      }
+
+      // - get the gravity vector.
+      if (ablWallFunctionNode["gravity_vector_component"])
+      {
+          wallData.gravityComponent_ = ablWallFunctionNode["gravity_vector_component"].as<unsigned>();
+      }
+
+      // - get the surface aerodynamic roughness height.
+      if (ablWallFunctionNode["roughness_height"])
+      {
+          wallData.z0_ = ablWallFunctionNode["roughness_height"].as<sierra::nalu::RoughnessHeight>();
+      }
+    }
+*/
+
     if (node["use_abl_wall_function"])
     {
       wallData.wallFunctionApproach_ = node["use_abl_wall_function"].as<bool>();
@@ -898,6 +951,8 @@ namespace YAML
         }
       }
     }
+
+
     if (node["pressure"])
     {
       wallData.pressure_ = node["pressure"].as<sierra::nalu::Pressure>();

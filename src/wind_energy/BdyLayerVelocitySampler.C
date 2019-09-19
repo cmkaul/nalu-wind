@@ -31,6 +31,7 @@ BdyLayerVelocitySampler::BdyLayerVelocitySampler(
     searchPartNames_(wallUserData.ablTargetPartNames_),
     offsetVector_(wallUserData.velOffsetVector_)
 {
+  std::cout << "BdyLayerVelocitySampler Constructed!!!!!" << std::endl;
   if (offsetVector_.size() != realm_.meta_data().spatial_dimension())
     throw std::runtime_error(
       "BdyLayerVelocitySampler:: Invalid offset vector provided");

@@ -71,6 +71,7 @@ AssembleMomentumEdgeABLWallFunctionSolverAlgorithm::AssembleMomentumEdgeABLWallF
   exposedAreaVec_ = meta_data.get_field<GenericFieldType>(meta_data.side_rank(), "exposed_area_vector");
   wallFrictionVelocityBip_ = meta_data.get_field<GenericFieldType>(meta_data.side_rank(), "wall_friction_velocity_bip");
   wallNormalDistanceBip_ = meta_data.get_field<GenericFieldType>(meta_data.side_rank(), "wall_normal_distance_bip");
+  std::cout << "velocitySampler_ = " << velocitySampler_ << std::endl;
 }
 
 //--------------------------------------------------------------------------
@@ -204,6 +205,13 @@ AssembleMomentumEdgeABLWallFunctionSolverAlgorithm::execute()
           const double *uBc = stk::mesh::field_data(*bcVelocity_, nodeR);
           p_uBip[j] = uNp1[j];
           p_uBcBip[j] = uBc[j];
+        }
+
+        std::cout << "useAltLESModel = " << useAltLESModel << std::endl;
+        // Reset "nodal velocity" if we are using the alternate LES model
+        if (useAltLESModel) {
+          velocitySampler_->get_velocity(nodeR, p_uBip);
+          std::cout << "Calling get_velocity: p_uBip = " << p_uBip[0] << " " << p_uBip[1] << " " << p_uBip[2] << std::endl;
         }
 
         // form unit normal

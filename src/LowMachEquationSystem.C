@@ -2008,6 +2008,8 @@ MomentumEquationSystem::register_wall_bc(
           velocitySampler = new BdyLayerVelocitySampler(realm_, userData);
           equationSystems_.preIterAlgDriver_.push_back(velocitySampler);
 
+          std::cout << "velocitySampler = " << velocitySampler << std::endl;
+
           NaluEnv::self().naluOutputP0()
             << "MomentumEQS:: Activated velocity sampling from user-defined height for ABL wall model" << std::endl;
         }
@@ -2016,7 +2018,7 @@ MomentumEquationSystem::register_wall_bc(
 
         if ( realm_.realmUsesEdges_ ) {
           theAlg = new AssembleMomentumEdgeABLWallFunctionSolverAlgorithm(realm_, part, this, 
-                                                                          grav, z0, referenceTemperature);
+                                                                          grav, z0, referenceTemperature,velocitySampler);
         }
         else {
           theAlg = new AssembleMomentumElemABLWallFunctionSolverAlgorithm(realm_, part, this, realm_.realmUsesEdges_, 
