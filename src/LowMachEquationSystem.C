@@ -7,8 +7,6 @@
 
 
 #include <LowMachEquationSystem.h>
-#include <wind_energy/ABLDampingAlgorithm.h>
-#include <wind_energy/ABLForcingAlgorithm.h>
 #include <AlgorithmDriver.h>
 #include <AssembleCourantReynoldsElemAlgorithm.h>
 #include <AssembleContinuityEdgeSolverAlgorithm.h>
@@ -106,11 +104,14 @@
 #include <TurbViscSmagorinskyAlgorithm.h>
 #include <TurbViscSSTAlgorithm.h>
 #include <TurbViscWaleAlgorithm.h>
-//! Repeated from above
-#include <wind_energy/ABLDampingAlgorithm.h>
-#include <wind_energy/ABLForcingAlgorithm.h>
 #include <FixPressureAtNodeAlgorithm.h>
 #include <FixPressureAtNodeInfo.h>
+
+// wind energy
+#include <wind_energy/ABLDampingAlgorithm.h>
+#include <wind_energy/ABLForcingAlgorithm.h>
+#include <wind_energy/ComputeABLWallFluxesAlgorithm.h>
+#include <wind_energy/BdyLayerVelocitySampler.h>
 
 // template for kernels
 #include <AlgTraits.h>
@@ -1933,6 +1934,10 @@ MomentumEquationSystem::register_wall_bc(
       ScalarFieldType *theHeatFluxBcField = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "heat_flux_bc"));
       stk::mesh::put_field_on_mesh(*theHeatFluxBcField, *part, nullptr);
 
+      GenericFieldType *wallHeatFluxBip 
+        = &(meta_data.declare_field<GenericFieldType>(sideRank, "wall_heat_flux_bip"));
+      stk::mesh::put_field_on_mesh(*wallHeatFluxBip, *part, numScsBip, nullptr);
+
       NormalHeatFlux heatFlux = userData.q_;
       std::vector<double> userSpec(1);
       userSpec[0] = heatFlux.qn_;
@@ -1961,8 +1966,41 @@ MomentumEquationSystem::register_wall_bc(
       std::map<AlgorithmType, Algorithm *>::iterator it_utau =
         wallFunctionParamsAlgDriver_->algMap_.find(wfAlgType);
       if ( it_utau == wallFunctionParamsAlgDriver_->algMap_.end() ) {
-        ComputeABLWallFrictionVelocityAlgorithm *theUtauAlg =
-          new ComputeABLWallFrictionVelocityAlgorithm(realm_, part, realm_.realmUsesEdges_, grav, z0, referenceTemperature);
+        std::cout << "heatFluxSpec = " << userData.heatFluxSpec_ << std::endl;
+        std::cout << "heatFluxABLSpec = " << userData.heatFluxABLSpec_ << std::endl;
+        // Need to clean up this logic so that you can do only one type of heat flux specification--MJC
+        ComputeABLWallFluxesAlgorithm *theUtauAlg =
+          new ComputeABLWallFluxesAlgorithm(realm_, userData.heatFluxABLNode_, part, realm_.realmUsesEdges_, grav, z0, referenceTemperature);
+      //ComputeABLWallFrictionVelocityAlgorithm *theUtauAlg =
+      //  new ComputeABLWallFrictionVelocityAlgorithm(realm_, part, realm_.realmUsesEdges_, grav, z0, referenceTemperature);
+
+
+
+        if (userData.sampleOffsetVelocity_) {
+          if (realm_.bdyLayerStats_ == nullptr)
+            throw std::runtime_error("MomentumEQS:: LES Sampling at different height requires boundary_layer_statistics turned on.");
+          double refHeight = 0.0;
+          for (int d=0; d < nDim; d++) {
+            refHeight += userData.velOffsetVector_[d] * userData.velOffsetVector_[d];
+          }
+          refHeight = std::sqrt(refHeight);
+          theUtauAlg->sampleOffsetVelocity_ = true;
+          theUtauAlg->planarAverageOffsetHeightVel_ = refHeight;
+        }
+        if (userData.sampleOffsetTemperature_) {
+          if (realm_.bdyLayerStats_ == nullptr)
+            throw std::runtime_error("MomentumEQS:: LES Sampling at different height requires boundary_layer_statistics turned on.");
+          double refHeight = 0.0;
+          for (int d=0; d < nDim; d++) {
+            refHeight += userData.tempOffsetVector_[d] * userData.tempOffsetVector_[d];
+          }
+          refHeight = std::sqrt(refHeight);
+          theUtauAlg->sampleOffsetTemperature_ = true;
+          theUtauAlg->planarAverageOffsetHeightTemp_ = refHeight;
+        }
+
+
+
         wallFunctionParamsAlgDriver_->algMap_[wfAlgType] = theUtauAlg;
       }
       else {
@@ -1974,14 +2012,37 @@ MomentumEquationSystem::register_wall_bc(
         solverAlgDriver_->solverAlgMap_.find(wfAlgType);
       if ( it_wf == solverAlgDriver_->solverAlgMap_.end() ) {
         SolverAlgorithm *theAlg = NULL;
+
+
+
+        BdyLayerVelocitySampler* velocitySampler = nullptr;
+
+        // Handle LES wall modeling approach
+        if (userData.sampleOffsetVelocity_) {
+          velocitySampler = new BdyLayerVelocitySampler(realm_, userData);
+          equationSystems_.preIterAlgDriver_.push_back(velocitySampler);
+
+          std::cout << "velocitySampler = " << velocitySampler << std::endl;
+
+          NaluEnv::self().naluOutputP0()
+            << "MomentumEQS:: Activated velocity sampling from user-defined height for ABL wall model" << std::endl;
+        }
+
+
+
         if ( realm_.realmUsesEdges_ ) {
           theAlg = new AssembleMomentumEdgeABLWallFunctionSolverAlgorithm(realm_, part, this, 
-                                                                          grav, z0, referenceTemperature);
+                                                                          grav, z0, referenceTemperature,velocitySampler);
         }
         else {
           theAlg = new AssembleMomentumElemABLWallFunctionSolverAlgorithm(realm_, part, this, realm_.realmUsesEdges_, 
                                                                           grav, z0, referenceTemperature);     
         }
+
+       if (userData.sampleOffsetVelocity_) {
+          velocitySampler->set_wall_func_algorithm(theAlg);
+        }
+
         solverAlgDriver_->solverAlgMap_[wfAlgType] = theAlg;
       }
       else {

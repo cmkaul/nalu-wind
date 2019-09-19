@@ -194,9 +194,13 @@ struct WallUserData : public UserData {
   unsigned gravityComponent_;
   RoughnessHeight z0_;
   
+  std::vector<double> velOffsetVector_{0.0, 0.0, 0.0};
+  std::vector<double> tempOffsetVector_{0.0, 0.0, 0.0};
+  std::vector<std::string> ablTargetPartNames_;
   
   bool isAdiabatic_;
   bool heatFluxSpec_;
+  bool heatFluxABLSpec_;
   bool isInterface_;
   bool refTempSpec_;
   bool htcSpec_;
@@ -204,16 +208,22 @@ struct WallUserData : public UserData {
   bool irradSpec_;
   bool emissSpec_;
 
+  bool sampleOffsetVelocity_{false};
+  bool sampleOffsetTemperature_{false};
+
   bool wallFunctionApproach_;
   bool ablWallFunctionApproach_;
 
   bool isFsiInterface_;
+
+  YAML::Node heatFluxABLNode_;
 
   WallUserData()
     : UserData(),
       gravityComponent_(3),
       isAdiabatic_(false),
       heatFluxSpec_(false),
+      heatFluxABLSpec_(false),
       isInterface_(false),
       refTempSpec_(false),
       htcSpec_(false),
@@ -221,7 +231,8 @@ struct WallUserData : public UserData {
       irradSpec_(false),
       wallFunctionApproach_(false),
       ablWallFunctionApproach_(false),
-      isFsiInterface_(false) {}    
+      isFsiInterface_(false),
+      heatFluxABLNode_(NULL) {}    
 };
 
 struct InflowUserData : public UserData {

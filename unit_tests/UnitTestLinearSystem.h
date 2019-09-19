@@ -224,7 +224,50 @@ protected:
     const char *  /* msg */) {}
 };
 
-}
+class TestEdgeLinearSystem : public TestLinearSystem
+{
+public:
+  TestEdgeLinearSystem(
+    sierra::nalu::Realm& realm,
+    const unsigned numDof,
+    sierra::nalu::EquationSystem* eqSys,
+    stk::topology topo
+  ) : TestLinearSystem(realm, numDof, eqSys, topo)
+  {}
+
+  using TestLinearSystem::sumInto;
+  virtual void sumInto(
+    unsigned numEntities,
+    const ngp::Mesh::ConnectedNodes&  entities,
+    const sierra::nalu::SharedMemView<const double*,sierra::nalu::DeviceShmem> & rhs,
+    const sierra::nalu::SharedMemView<const double**,sierra::nalu::DeviceShmem> & lhs,
+    const sierra::nalu::SharedMemView<int*,sierra::nalu::DeviceShmem> &  /* localIds */,
+    const sierra::nalu::SharedMemView<int*,sierra::nalu::DeviceShmem> &  /* sortPermutation */,
+    const char *  /* trace_tag */)
+  {
+    for (unsigned i=0; i < numEntities; ++i) {
+      auto ioff = (entities[i].local_offset() - 1) * numDof();
+      for (unsigned d=0; d < numDof(); ++d)
+        Kokkos::atomic_add(&rhs_(ioff + d), rhs(i * numDof() + d));
+    }
+
+    for (unsigned i=0; i < numEntities; ++i) {
+      auto ioff = (entities[i].local_offset() - 1) * numDof();
+      for (unsigned j=0; j < numEntities; ++j) {
+        auto joff = (entities[j].local_offset() - 1) * numDof();
+        for (unsigned d=0; d < numDof(); ++d) {
+          auto ii = i * numDof() + d;
+          auto jj = j * numDof() + d;
+          Kokkos::atomic_add(&lhs_(ioff + d, joff + d), lhs(ii, jj));
+        }
+      }
+    }
+    Kokkos::atomic_add(&numSumIntoCalls_, 1u);
+  }
+
+};
+
+} // namespace unit_test_utils
 
 #endif /* UNITTESTLINEARSYSTEM_H */
 

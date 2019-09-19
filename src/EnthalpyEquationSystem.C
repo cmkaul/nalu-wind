@@ -10,6 +10,7 @@
 #include <wind_energy/ABLDampingAlgorithm.h>
 #include <wind_energy/ABLForcingAlgorithm.h>
 #include <AlgorithmDriver.h>
+#include <AssembleFaceScalarFluxBCSolverAlgorithm.h>
 #include <AssembleScalarFluxBCSolverAlgorithm.h>
 #include <AssembleScalarEdgeOpenSolverAlgorithm.h>
 #include <AssembleScalarEdgeSolverAlgorithm.h>
@@ -58,7 +59,10 @@
 #include <TimeIntegrator.h>
 #include <SolverAlgorithmDriver.h>
 #include <SolutionOptions.h>
+
+// wind energy
 #include <wind_energy/ABLForcingAlgorithm.h>
+#include <wind_energy/BdyLayerTemperatureSampler.h>
 
 // template for kernels
 #include <AlgTraits.h>
@@ -800,6 +804,8 @@ EnthalpyEquationSystem::register_wall_bc(
 
   stk::mesh::MetaData &meta_data = realm_.meta_data();
 
+  stk::topology::rank_t sideRank = static_cast<stk::topology::rank_t>(meta_data.side_rank());
+
   // extract user data
   WallUserData userData = wallBCData.userData_;
   std::string temperatureName = "temperature";
@@ -809,11 +815,100 @@ EnthalpyEquationSystem::register_wall_bc(
 
   // check for wall function; warn user that this is not yet supported
   const bool wallFunctionApproach = userData.wallFunctionApproach_;
-  if (wallFunctionApproach)
-    NaluEnv::self().naluOutputP0() << "Sorry, wall function not yet supported for energy; will use Dirichlet" << std::endl;
+  const bool ablWallFunctionApproach = userData.ablWallFunctionApproach_;
+  if (wallFunctionApproach && !ablWallFunctionApproach) {
+    NaluEnv::self().naluOutputP0() << "Sorry, standard wall function not yet supported for energy; will use Dirichlet" << std::endl;
 
+  }
+  else if (ablWallFunctionApproach) {
+    std::cout << "ABL wall function: enthalpy" << std::endl;
+
+    GenericFieldType *wallHeatFluxBip = meta_data.get_field<GenericFieldType>(sideRank, "wall_heat_flux_bip");
+
+    // solver; lhs
+    std::map<AlgorithmType, SolverAlgorithm *>::iterator itsi =
+      solverAlgDriver_->solverAlgMap_.find(algType);
+    if ( itsi == solverAlgDriver_->solverAlgMap_.end() ) {
+
+      BdyLayerTemperatureSampler* TemperatureSampler = nullptr;
+
+        // Handle LES wall modeling approach
+        if (userData.sampleOffsetTemperature_) {
+          TemperatureSampler = new BdyLayerTemperatureSampler(realm_, userData);
+          equationSystems_.preIterAlgDriver_.push_back(TemperatureSampler);
+
+          NaluEnv::self().naluOutputP0()
+            << "EnthalpyEQS:: Activated temperature sampling from user-defined height for ABL wall model" << std::endl;
+        }
+
+      AssembleFaceScalarFluxBCSolverAlgorithm *theAlg
+        = new AssembleFaceScalarFluxBCSolverAlgorithm(realm_, part, this, wallHeatFluxBip);
+
+      if (userData.sampleOffsetTemperature_) {
+        TemperatureSampler->set_wall_func_algorithm(theAlg);
+      }
+
+      solverAlgDriver_->solverAlgMap_[algType] = theAlg;
+    }
+    else {
+      itsi->second->partVec_.push_back(part);
+    }
+
+
+
+/*
+    const auto& solverAlgMap = solverAlgDriver_->solverAlgMap_;
+    const auto* it = solverAlgMap.find(algType);
+
+    if (it == solverAlgMap.end()) {
+    auto* theAlg = new AssembleFaceScalarFluxBCSolverAlgorithm(realm_, part, this,
+                                                  wallHeatFluxBip, realm_.realmUsesEdges_);
+    solverAlgMap[algType] = theAlg;
+    }
+    else { 
+       it->second->partVec_.push_back(part);
+    }
+*/
+/*
+    ScalarFieldType *theBcField = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "heat_flux_bc"));
+    stk::mesh::put_field_on_mesh(*theBcField, *part, nullptr);
+
+    NormalHeatFlux heatFlux = userData.q_;
+    std::vector<double> userSpec(1);
+    userSpec[0] = heatFlux.qn_;
+
+    // new it
+    ConstantAuxFunction *theAuxFunc = new ConstantAuxFunction(0, 1, userSpec);
+
+    // bc data alg
+    AuxFunctionAlgorithm *auxAlg
+      = new AuxFunctionAlgorithm(realm_, part,
+                                 theBcField, theAuxFunc,
+                                 stk::topology::NODE_RANK);
+    bcDataAlg_.push_back(auxAlg);
+
+    // solver; lhs
+    std::map<AlgorithmType, SolverAlgorithm *>::iterator itsi =
+      solverAlgDriver_->solverAlgMap_.find(algType);
+    if ( itsi == solverAlgDriver_->solverAlgMap_.end() ) {
+      AssembleScalarFluxBCSolverAlgorithm *theAlg
+        = new AssembleScalarFluxBCSolverAlgorithm(realm_, part, this,
+                                                  theBcField, realm_.realmUsesEdges_);
+      solverAlgDriver_->solverAlgMap_[algType] = theAlg;
+    }
+    else {
+      itsi->second->partVec_.push_back(part);
+    }
+*/
+
+
+
+
+  }
   // check that is was specified (okay if it is not)
-  if ( bc_data_specified(userData, temperatureName) ) {
+  else if ( bc_data_specified(userData, temperatureName) ) {
+
+    std::cout << "Dirichlet: enthalpy" << std::endl;
 
     // bc data work (copy, enthalpy evaluation, etc.)
     ScalarFieldType *temperatureBc = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "temperature_bc"));
@@ -872,6 +967,7 @@ EnthalpyEquationSystem::register_wall_bc(
 
   }
   else if ( userData.heatFluxSpec_ ) {
+    std::cout << "specified heat flux: enthalpy" << std::endl;
 
     ScalarFieldType *theBcField = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "heat_flux_bc"));
     stk::mesh::put_field_on_mesh(*theBcField, *part, nullptr);

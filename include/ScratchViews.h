@@ -706,8 +706,16 @@ void MasterElementViews<T, TEAMHANDLETYPE, SHMEM>::fill_master_element_views_new
   MasterElement* /* meFC */,
   MasterElement* meSCS,
   MasterElement* meSCV,
-  MasterElement* meFEM,
-  int faceOrdinal)
+  MasterElement*
+#ifndef KOKKOS_ENABLE_CUDA
+      meFEM
+#endif
+  ,
+  int
+#ifndef KOKKOS_ENABLE_CUDA
+     faceOrdinal
+#endif
+  )
 {
   for(unsigned i=0; i<dataEnums.size(); ++i) {
     switch(dataEnums(i))
@@ -932,6 +940,17 @@ int calculate_shared_mem_bytes_per_thread(int lhsSize, int rhsSize, int scratchI
     return bytes_per_thread;
 }
 
+inline
+int calc_shmem_bytes_per_thread_edge(int rhsSize)
+{
+  // LHS (RHS^2) + RHS
+  const int matSize = rhsSize * (1 + rhsSize) * sizeof(double);
+  // Scratch IDs and search permutations (will be optimized later)
+  const int idSize = 2 * rhsSize * sizeof(int);
+
+  return (matSize + idSize);
+}
+
 template<typename ELEMDATAREQUESTSTYPE>
 inline
 int calculate_shared_mem_bytes_per_thread(int lhsSize, int rhsSize, int scratchIdsSize, int nDim,
@@ -949,15 +968,6 @@ int calculate_shared_mem_bytes_per_thread(int lhsSize, int rhsSize, int scratchI
 
     bytes_per_thread *= 2*simdLen;
     return bytes_per_thread;
-}
-
-template<typename T>
-KOKKOS_FUNCTION
-void set_zero(T* values, unsigned length)
-{
-    for(unsigned i=0; i<length; ++i) {
-        values[i] = 0;
-    }
 }
 
 } // namespace nalu

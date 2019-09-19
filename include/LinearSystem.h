@@ -109,10 +109,10 @@ public:
     DefaultHostOnlyCoeffApplier(LinearSystem& linSys)
     : linSys_(linSys)
     {}
-  
+
     KOKKOS_FUNCTION
     ~DefaultHostOnlyCoeffApplier() {}
-  
+
     KOKKOS_FUNCTION
     virtual void operator()(unsigned numEntities,
                             const ngp::Mesh::ConnectedNodes& entities,
@@ -124,7 +124,7 @@ public:
     {
       linSys_.sumInto(numEntities, entities, rhs, lhs, localIds, sortPermutation, trace_tag);
     }
-  
+
     void free_device_pointer() {}
 
     CoeffApplier* device_pointer() { return this; }
@@ -226,7 +226,6 @@ protected:
   Realm &realm_;
   EquationSystem *eqSys_;
   bool inConstruction_;
-  int writeCounter_;
 
   const unsigned numDof_;
   const std::string eqSysName_;

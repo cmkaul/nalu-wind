@@ -8,6 +8,7 @@
 #include "kernels/UnitTestKernelUtils.h"
 #include "UnitTestUtils.h"
 #include "UnitTestHelperObjects.h"
+#include "UnitTestTpetraHelperObjects.h"
 
 #include "kernel/ScalarAdvDiffElemKernel.h"
 
@@ -69,5 +70,39 @@ TEST_F(MixtureFractionKernelHex8Mesh, NGP_advection_diffusion)
   namespace gold_values = hex8_golds::advection_diffusion;
   unit_test_kernel_utils::expect_all_near(helperObjs.linsys->hostrhs_, gold_values::rhs);
   unit_test_kernel_utils::expect_all_near<8>(helperObjs.linsys->hostlhs_, gold_values::lhs);
+}
+
+TEST_F(MixtureFractionKernelHex8Mesh, NGP_advection_diffusion_tpetra)
+{
+  // FIXME: only test on one core
+  if (stk::parallel_machine_size(MPI_COMM_WORLD) > 1) 
+    return;
+
+  fill_mesh_and_init_fields(true);
+
+  // Setup solution options for default advection kernel
+  solnOpts_.meshMotion_ = false;
+  solnOpts_.meshDeformation_ = false;
+  solnOpts_.externalMeshDeformation_ = false;
+
+  int numDof = 1;
+  unit_test_utils::TpetraHelperObjectsElem helperObjs(bulk_, stk::topology::HEX_8, numDof, partVec_[0]);
+
+  helperObjs.realm.naluGlobalId_ = naluGlobalId_;
+  helperObjs.realm.set_global_id();
+
+  // Initialize the kernel
+  std::unique_ptr<sierra::nalu::Kernel> advKernel(
+    new sierra::nalu::ScalarAdvDiffElemKernel<sierra::nalu::AlgTraitsHex8>(
+     bulk_, solnOpts_, mixFraction_, viscosity_, helperObjs.assembleElemSolverAlg->dataNeededByKernels_));
+
+  // Register the kernel for execution
+  helperObjs.assembleElemSolverAlg->activeKernels_.push_back(advKernel.get());
+
+  // Populate LHS and RHS
+  helperObjs.execute();
+
+  namespace gold_values = hex8_golds::advection_diffusion;
+  helperObjs.check_against_gold_values(8, gold_values::lhs, gold_values::rhs);
 }
 

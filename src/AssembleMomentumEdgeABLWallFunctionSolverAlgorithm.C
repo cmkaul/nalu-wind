@@ -16,6 +16,7 @@
 #include <master_element/MasterElement.h>
 #include "master_element/MasterElementFactory.h"
 #include <ABLProfileFunction.h>
+#include "wind_energy/BdyLayerVelocitySampler.h"
 
 // stk_mesh/base/fem
 #include <stk_mesh/base/BulkData.hpp>
@@ -46,7 +47,8 @@ AssembleMomentumEdgeABLWallFunctionSolverAlgorithm::AssembleMomentumEdgeABLWallF
   EquationSystem *eqSystem,
   const double &gravity,
   const double &z0,
-  const double &Tref)
+  const double &Tref,
+  BdyLayerVelocitySampler* velocitySampler)
   : SolverAlgorithm(realm, part, eqSystem),
     z0_(z0), 
     Tref_(Tref), 
@@ -56,7 +58,8 @@ AssembleMomentumEdgeABLWallFunctionSolverAlgorithm::AssembleMomentumEdgeABLWallF
     beta_h_(16.0),
     gamma_m_(5.0),
     gamma_h_(5.0),
-    kappa_(realm.get_turb_model_constant(TM_kappa))
+    kappa_(realm.get_turb_model_constant(TM_kappa)),
+    velocitySampler_(velocitySampler)
 {
   // save off fields
   stk::mesh::MetaData & meta_data = realm_.meta_data();
@@ -68,6 +71,7 @@ AssembleMomentumEdgeABLWallFunctionSolverAlgorithm::AssembleMomentumEdgeABLWallF
   exposedAreaVec_ = meta_data.get_field<GenericFieldType>(meta_data.side_rank(), "exposed_area_vector");
   wallFrictionVelocityBip_ = meta_data.get_field<GenericFieldType>(meta_data.side_rank(), "wall_friction_velocity_bip");
   wallNormalDistanceBip_ = meta_data.get_field<GenericFieldType>(meta_data.side_rank(), "wall_normal_distance_bip");
+  std::cout << "velocitySampler_ = " << velocitySampler_ << std::endl;
 }
 
 //--------------------------------------------------------------------------
@@ -95,6 +99,9 @@ AssembleMomentumEdgeABLWallFunctionSolverAlgorithm::execute()
   stk::mesh::MetaData & meta_data = realm_.meta_data();
 
   const int nDim = meta_data.spatial_dimension();
+
+  const bool useAltLESModel = (velocitySampler_ != nullptr);
+  const double lesLHSFac = useAltLESModel ? 0.0 : 1.0;
 
   // space for LHS/RHS; nodesPerFace*nDim*nodesPerFace*nDim and nodesPerFace*nDim
   std::vector<double> lhs;
@@ -200,6 +207,13 @@ AssembleMomentumEdgeABLWallFunctionSolverAlgorithm::execute()
           p_uBcBip[j] = uBc[j];
         }
 
+        std::cout << "useAltLESModel = " << useAltLESModel << std::endl;
+        // Reset "nodal velocity" if we are using the alternate LES model
+        if (useAltLESModel) {
+          velocitySampler_->get_velocity(nodeR, p_uBip);
+          std::cout << "Calling get_velocity: p_uBip = " << p_uBip[0] << " " << p_uBip[1] << " " << p_uBip[2] << std::endl;
+        }
+
         // form unit normal
         for ( int j = 0; j < nDim; ++j ) {
           p_unitNormal[j] = areaVec[offSetAveraVec+j]/aMag;
@@ -260,12 +274,12 @@ AssembleMomentumEdgeABLWallFunctionSolverAlgorithm::execute()
               const double om_nini = 1.0 - ninj;
               uiTan += om_nini*p_uBip[j];
               uiBcTan += om_nini*p_uBcBip[j];
-              p_lhs[rowR+localFaceNode*nDim+i] += lambda*om_nini;
+              p_lhs[rowR+localFaceNode*nDim+i] += lesLHSFac*lambda*om_nini;
             }
             else {
               uiTan -= ninj*p_uBip[j];
               uiBcTan -= ninj*p_uBcBip[j];
-              p_lhs[rowR+localFaceNode*nDim+j] -= lambda*ninj;
+              p_lhs[rowR+localFaceNode*nDim+j] -= lesLHSFac*lambda*ninj;
             }
           }
           p_rhs[indexR] -= lambda*(uiTan-uiBcTan);

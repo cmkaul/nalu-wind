@@ -16,6 +16,7 @@
 #include <master_element/MasterElement.h>
 #include "master_element/MasterElementFactory.h"
 #include <ABLProfileFunction.h>
+#include "wind_energy/BdyLayerVelocitySampler.h"
 
 // stk_mesh/base/fem
 #include <stk_mesh/base/BulkData.hpp>
@@ -47,7 +48,8 @@ AssembleMomentumElemABLWallFunctionSolverAlgorithm::AssembleMomentumElemABLWallF
   const bool &useShifted,
   const double &gravity,
   const double &z0,
-  const double &Tref)
+  const double &Tref,
+  BdyLayerVelocitySampler* velocitySampler)
   : SolverAlgorithm(realm, part, eqSystem),
     useShifted_(useShifted),
     z0_(z0), 
@@ -58,7 +60,8 @@ AssembleMomentumElemABLWallFunctionSolverAlgorithm::AssembleMomentumElemABLWallF
     beta_h_(16.0),
     gamma_m_(5.0),
     gamma_h_(5.0),
-    kappa_(realm.get_turb_model_constant(TM_kappa))
+    kappa_(realm.get_turb_model_constant(TM_kappa)),
+    velocitySampler_(velocitySampler)
 {
   // save off fields
   stk::mesh::MetaData & meta_data = realm_.meta_data();
@@ -97,6 +100,9 @@ AssembleMomentumElemABLWallFunctionSolverAlgorithm::execute()
   stk::mesh::MetaData & meta_data = realm_.meta_data();
 
   const int nDim = meta_data.spatial_dimension();
+
+  const bool useAltLESModel = (velocitySampler_ != nullptr);
+  const double lesLHSFac = useAltLESModel ? 0.0 : 1.0;
 
   // space for LHS/RHS; nodesPerFace*nDim*nodesPerFace*nDim and nodesPerFace*nDim
   std::vector<double> lhs;
@@ -319,13 +325,13 @@ AssembleMomentumElemABLWallFunctionSolverAlgorithm::execute()
               uiTan += om_nini*p_uBip[j];
               uiBcTan += om_nini*p_uBcBip[j];
               for (int ic = 0; ic < nodesPerFace; ++ic)
-                p_lhs[rowR+ic*nDim+i] += lambda*om_nini*p_face_shape_function[offSetSF_face+ic];
+                p_lhs[rowR+ic*nDim+i] += lesLHSFac*lambda*om_nini*p_face_shape_function[offSetSF_face+ic];
             }
             else {
               uiTan -= ninj*p_uBip[j];
               uiBcTan -= ninj*p_uBcBip[j];
               for (int ic = 0; ic < nodesPerFace; ++ic)
-                p_lhs[rowR+ic*nDim+j] -= lambda*ninj*p_face_shape_function[offSetSF_face+ic];
+                p_lhs[rowR+ic*nDim+j] -= lesLHSFac*lambda*ninj*p_face_shape_function[offSetSF_face+ic];
             }
           }
           p_rhs[indexR] -= lambda*(uiTan-uiBcTan);
