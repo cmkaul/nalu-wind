@@ -78,6 +78,7 @@ BdyLayerStatistics::load(const YAML::Node& node)
                  timeHistOutFrequency_, timeHistOutFrequency_);
   get_if_present(node, "stats_output_file", bdyStatsFile_, bdyStatsFile_);
   get_if_present(node, "process_utau_statistics", hasUTau_, hasUTau_);
+  get_if_present(node, "process_shf_statistics", hasShf_, hasShf_);
 }
 
 void
@@ -690,6 +691,13 @@ BdyLayerStatistics::prepare_nc_file()
     ncVarIDs_["utau"] = varid;
   }
 
+  // Colleen
+  if (hasShf_) {
+    ierr = nc_def_var(ncid, "shf", NC_DOUBLE, 1, &recDim, &varid);
+    ncVarIDs_["shf"] = varid;
+  }
+
+
   //! Indicate that we are done defining variables, ready to write data
   ierr = nc_enddef(ncid);
   check_nc_error(ierr, "nc_enddef");
@@ -774,6 +782,11 @@ BdyLayerStatistics::write_time_hist_file()
 
   if (hasUTau_) {
     ierr = nc_put_vara_double(ncid, ncVarIDs_["utau"], &tCount, &count0, &uTauAvg_);
+  }
+ 
+  // Colleen
+  if (hasShf_) {
+    ierr = nc_put_vara_double(ncid, ncVarIDs_["shf"], &tCount, &count0, &shfAvg_);
   }
 
   ierr = nc_close(ncid);

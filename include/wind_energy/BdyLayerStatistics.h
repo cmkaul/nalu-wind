@@ -83,6 +83,13 @@ public:
   void set_utau_avg(double utau)
   { uTauAvg_ = utau; }
 
+
+  //Colleen
+  void set_shf_avg(double shf)
+  { shfAvg_ = shf; }
+  
+
+
   //! Number of vertical levels on this ABL mesh
   int abl_num_levels() const { return heights_.size(); }
 
@@ -206,6 +213,9 @@ private:
   //! Friction velocity average
   double uTauAvg_{0.0};
 
+  //! Colleen: surface heat flux velocity average
+  double shfAvg_{0.0};
+
   //! Dimensionality of the mesh
   int nDim_{3};
 
@@ -228,6 +238,10 @@ private:
 
   //! Flag indicating whether uTau history is processed
   bool hasUTau_{true};
+
+  //! Colleen
+  //Flag indicating whether uTau history is processed
+  bool hasShf_{true};
 
   //! Flag indicating whether initialization must be performed
   bool doInit_{true};

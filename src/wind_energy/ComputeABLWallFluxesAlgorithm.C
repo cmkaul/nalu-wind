@@ -180,6 +180,15 @@ ComputeABLWallFluxesAlgorithm::execute()
   std::array<double, 2> uTauAreaSumGlobal{ {0.0, 0.0} };
   double utau_calc;
 
+  // Colleen
+  //Quantities to get the averate heat flux  over the whole sideset
+  std::array<double, 2> shfAreaSumLocal{ {0.0, 0.0} }; // First value hold heat flux * area, second value holds area. To get average heat flux, sum both quantities over all processes and divide one by another.
+  std::array<double, 2> shfAreaSumGlobal{ {0.0, 0.0} };
+  double shf_calc;
+
+
+
+
   // zero out assembled nodal quantities
   zero_nodal_fields();
 
@@ -513,6 +522,9 @@ ComputeABLWallFluxesAlgorithm::execute()
 
         uTauAreaSumLocal[0] += wallFrictionVelocityBip[ip] * aMag ;
         uTauAreaSumLocal[1] += aMag ;
+        //Colleen
+        shfAreaSumLocal[0] += wallHeatFluxBip[ip] * aMag ;
+        shfAreaSumLocal[1] += aMag ;
       }
     }
   }
@@ -524,6 +536,17 @@ ComputeABLWallFluxesAlgorithm::execute()
       uTauAreaSumGlobal.data(), 2);
     utau_calc = uTauAreaSumGlobal[0] / uTauAreaSumGlobal[1];
     realm_.bdyLayerStats_->set_utau_avg(utau_calc);
+  }
+  // Colleen
+
+  if ((realm_.bdyLayerStats_ != nullptr) &&
+      (realm_.isFinalOuterIter_)) {
+    stk::all_reduce_sum(
+      NaluEnv::self().parallel_comm(), shfAreaSumLocal.data(),
+      shfAreaSumGlobal.data(), 2);
+    shf_calc = shfAreaSumGlobal[0] / shfAreaSumGlobal[1];
+    realm_.bdyLayerStats_->set_shf_avg(shf_calc);
+
   }
 
   // parallel assemble and normalize
